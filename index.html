@@ -419,6 +419,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-ttl" id="day-detail-title"></div>
+    <div id="day-detail-subtitle" style="font-size:12px;color:#9E9E9E;margin:-10px 0 14px;"></div>
     <div id="day-detail-list"></div>
     <button onclick="document.getElementById('day-detail-modal').style.display='none'"
       style="width:100%;padding:13px;border-radius:14px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-top:12px;">
@@ -735,22 +736,24 @@ function getDoneForDate(y,m,d){
 function calData(y,m,d){
   const isCur=(today.getFullYear()===y&&today.getMonth()===m);
   const isToday=(isCur&&d===today.getDate());
-  const dt=new Date(y,m,d);
-  const isFuture=dt>today&&!isToday;
-  if(isFuture) return null;
+  const dt=new Date(y,m,d); dt.setHours(0,0,0,0);
+  const tod=new Date(today); tod.setHours(0,0,0,0);
+  const isFuture=dt>tod;
 
   const active = getRoutinesForDate(y,m,d);
-  if(!active.length) return{pct:0,today:isToday};
+  if(!active.length) return{pct:0,today:isToday,future:isFuture};
 
   if(isToday){
     const doneCnt = active.filter(r=>r.done).length;
-    return{pct:Math.round(doneCnt/active.length*100),today:true};
+    return{pct:Math.round(doneCnt/active.length*100),today:true,future:false};
   }
-
+  if(isFuture){
+    return{pct:0,today:false,future:true};
+  }
   // 過去の日付: historyから取得
   const done = getDoneForDate(y,m,d);
   const doneCnt = active.filter(r=>done[r.id]).length;
-  return{pct:Math.round(doneCnt/active.length*100),today:false};
+  return{pct:Math.round(doneCnt/active.length*100),today:false,future:false};
 }
 function drawCal(){
   document.getElementById('cal-lbl').textContent=`${calY}年${MN[calM]}`;
@@ -761,16 +764,14 @@ function drawCal(){
   for(let d=1;d<=dim;d++){
     const data=calData(calY,calM,d);
     const c=document.createElement('div'); c.className='cal-cell';
-    if(data&&data.today) c.classList.add('c-today');
-    else if(!data) c.classList.add('c-future');
+    if(data.today) c.classList.add('c-today');
+    else if(data.future) c.classList.add('c-future');
     else if(data.pct===100) c.classList.add('c-full');
     else if(data.pct>0) c.classList.add('c-partial');
     else c.classList.add('c-miss');
-    c.innerHTML=`<div class="cal-num">${d}</div>${data&&!data.today?`<div class="cal-bar-small"></div>`:''}`;
-    if(data!==null){
-      c.style.cursor='pointer';
-      c.addEventListener('click',()=>showDayDetail(calY,calM,d));
-    }
+    c.innerHTML=`<div class="cal-num">${d}</div>${!data.today?`<div class="cal-bar-small"></div>`:''}`;
+    c.style.cursor='pointer';
+    c.addEventListener('click',()=>showDayDetail(calY,calM,d));
     grid.appendChild(c);
   }
 }
@@ -778,28 +779,43 @@ document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0)
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
 
 function showDayDetail(y,m,d){
+  const dt=new Date(y,m,d); dt.setHours(0,0,0,0);
+  const tod=new Date(today); tod.setHours(0,0,0,0);
   const isToday=(y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate());
+  const isFuture=dt>tod;
   const active = getRoutinesForDate(y,m,d);
-  const done = isToday ? (() => { const o={}; routines.forEach(r=>{if(r.done)o[r.id]=true;}); return o; })()
-                       : getDoneForDate(y,m,d);
+
+  const done = isToday
+    ? (() => { const o={}; routines.forEach(r=>{if(r.done)o[r.id]=true;}); return o; })()
+    : isFuture ? {}
+    : getDoneForDate(y,m,d);
 
   const modal = document.getElementById('day-detail-modal');
+  const dow = DAYS[new Date(y,m,d).getDay()];
+  const label = isToday ? '今日' : isFuture ? '予定' : '記録';
   document.getElementById('day-detail-title').textContent =
-    `${y}年${MN[m]}${d}日（${DAYS[new Date(y,m,d).getDay()]}）`;
+    `${y}年${MN[m]}${d}日（${dow}）`;
+  document.getElementById('day-detail-subtitle').textContent =
+    isFuture ? '📅 この日の予定ルーティーン' :
+    isToday  ? '📋 今日のルーティーン' :
+               '📊 この日の達成記録';
 
   const list = document.getElementById('day-detail-list');
   list.innerHTML = '';
   if(!active.length){
     list.innerHTML = '<div style="color:#9E9E9E;font-size:13px;padding:12px 0;">この日のルーティーンはありません</div>';
   } else {
-    const doneCnt = active.filter(r=>done[r.id]).length;
-    const pct = Math.round(doneCnt/active.length*100);
-    list.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <div style="flex:1;height:7px;background:#EEE;border-radius:99px;overflow:hidden;">
-        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#66BB6A,#43A047);border-radius:99px;"></div>
-      </div>
-      <span style="font-size:13px;font-weight:700;color:#43A047;">${doneCnt}/${active.length} (${pct}%)</span>
-    </div>`;
+    if(!isFuture){
+      const doneCnt = active.filter(r=>done[r.id]).length;
+      const pct = Math.round(doneCnt/active.length*100);
+      const barColor = pct===100?'#4CAF50':pct>0?'#FFB300':'#E0E0E0';
+      list.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="flex:1;height:7px;background:#EEE;border-radius:99px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${barColor};border-radius:99px;"></div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:${barColor};">${doneCnt}/${active.length} (${pct}%)</span>
+      </div>`;
+    }
     active.forEach(r=>{
       const isDone = !!done[r.id];
       const row = document.createElement('div');
@@ -808,11 +824,11 @@ function showDayDetail(y,m,d){
         <div style="width:36px;height:36px;border-radius:10px;background:${r.color.bg};display:flex;align-items:center;justify-content:center;font-size:18px;">${r.emoji}</div>
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:500;color:${isDone?'#9E9E9E':'#212121'};${isDone?'text-decoration:line-through;':''}">${r.name}</div>
-          <div style="font-size:11px;color:#BDBDBD;">${r.time}</div>
+          <div style="font-size:11px;color:#BDBDBD;">${r.time}${r.duration?' · '+r.duration+'分':''}</div>
         </div>
-        <div style="width:26px;height:26px;border-radius:50%;${isDone?'background:#4CAF50;border:2px solid #4CAF50;':'background:#fff;border:2px solid #E0E0E0;'}display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;">
-          ${isDone?'✓':''}
-        </div>`;
+        ${isFuture ? '<div style="font-size:11px;color:#BDBDBD;">予定</div>' :
+          `<div style="width:26px;height:26px;border-radius:50%;${isDone?'background:#4CAF50;border:2px solid #4CAF50;':'background:#fff;border:2px solid #E0E0E0;'}display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;">${isDone?'✓':''}</div>`
+        }`;
       list.appendChild(row);
     });
   }
