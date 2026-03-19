@@ -797,6 +797,7 @@ document.getElementById('modal-save').addEventListener('click',()=>{
     done:false,notif:notifOn,ntime:document.getElementById('m-ntime').value,
     repeat:buildRepeatObj()});
   document.getElementById('modal').style.display='none';
+  saveAll();
   renderToday();
 });
 
