@@ -188,6 +188,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 .mode-add-row button{padding:10px 16px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
 .mode-routine-picker{margin-top:14px;}
 .mode-routine-picker-title{font-size:12px;font-weight:700;color:#9E9E9E;margin-bottom:8px;}
+/* 削除ボタン */
+.r-del-btn{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:#BDBDBD;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.r-del-btn:hover{background:#FFF3F3;color:#E57373;}
+.routine-card.delete-mode{border-color:#FFCDD2;background:#FFF5F5;}
 .mrp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid #F5F5F5;cursor:pointer;}
 .mrp-item:last-child{border:none;}
 .mrp-chk{width:22px;height:22px;border-radius:6px;border:1.5px solid #E0E0E0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;transition:all .15s;}
@@ -698,7 +702,8 @@ function makeCard(r){
         ${r.notif?`<span class="r-notif">🔔${r.ntime||r.time}</span>`:''}
       </div>
     </div>
-    <div class="check-btn${r.done?' done':''}">${r.done?'✓':''}</div>`;
+    <div class="check-btn${r.done?' done':''}">${r.done?'✓':''}</div>
+    <button class="r-del-btn" title="削除">✕</button>`;
   card.querySelector('.check-btn').addEventListener('click',e=>{
     e.stopPropagation(); r.done=!r.done;
     if(r.done&&r.repeat&&r.repeat.type==='weekly_n') r.repeat.doneThisWeek=(r.repeat.doneThisWeek||0)+1;
@@ -707,7 +712,39 @@ function makeCard(r){
     saveAll();
     renderToday(); updateStats();
   });
+  card.querySelector('.r-del-btn').addEventListener('click',e=>{
+    e.stopPropagation();
+    showDeleteConfirm(r);
+  });
   return card;
+}
+
+function showDeleteConfirm(r){
+  if(document.getElementById('del-confirm-modal')) {
+    document.getElementById('del-confirm-modal').remove();
+  }
+  const bg = document.createElement('div');
+  bg.id = 'del-confirm-modal';
+  bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;';
+  bg.innerHTML=`
+    <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:320px;text-align:center;">
+      <div style="font-size:32px;margin-bottom:12px;">${r.emoji}</div>
+      <div style="font-size:16px;font-weight:700;color:#212121;margin-bottom:8px;">「${r.name}」を削除しますか？</div>
+      <div style="font-size:13px;color:#9E9E9E;margin-bottom:20px;">削除すると元に戻せません</div>
+      <div style="display:flex;gap:8px;">
+        <button id="del-cancel" style="flex:1;padding:13px;border-radius:12px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">キャンセル</button>
+        <button id="del-ok" style="flex:1;padding:13px;border-radius:12px;background:#EF5350;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">削除する</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  document.getElementById('del-cancel').onclick = () => bg.remove();
+  document.getElementById('del-ok').onclick = () => {
+    routines = routines.filter(x=>x.id!==r.id);
+    saveAll();
+    renderToday();
+    bg.remove();
+  };
+  bg.addEventListener('click', e=>{ if(e.target===bg) bg.remove(); });
 }
 
 // inactive toggle
