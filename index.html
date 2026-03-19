@@ -189,6 +189,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 .mode-routine-picker{margin-top:14px;}
 .mode-routine-picker-title{font-size:12px;font-weight:700;color:#9E9E9E;margin-bottom:8px;}
 /* 削除ボタン */
+.r-edit-btn{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:#BDBDBD;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.r-edit-btn:hover{background:#E8F5E9;color:#4CAF50;}
 .r-del-btn{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:#BDBDBD;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
 .r-del-btn:hover{background:#FFF3F3;color:#E57373;}
 .routine-card.delete-mode{border-color:#FFCDD2;background:#FFF5F5;}
@@ -225,10 +227,11 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
     <div class="streak-chip">🔥 <span id="streak-n">7</span>日連続</div>
     <div class="done-chip">✅ <span id="done-chip">0 / 0 完了</span></div>
   </div>
-  <div class="tabs">
+  <div class="tabs" style="position:relative;">
     <div class="tab active" data-tab="today">今日</div>
     <div class="tab" data-tab="calendar">カレンダー</div>
     <div class="tab" data-tab="report">レポート</div>
+    <div class="tab" data-tab="settings">設定</div>
   </div>
 </div>
 
@@ -308,12 +311,36 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 </div>
 </div>
 
+<!-- 設定ビュー -->
+<div class="view" id="view-settings">
+  <div style="padding:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px 12px;">
+      <div style="font-size:16px;font-weight:700;color:#212121;">ルーティーン一覧</div>
+      <button onclick="document.getElementById('fab-btn').click()"
+        style="padding:7px 16px;border-radius:99px;background:#4CAF50;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:sans-serif;">
+        ＋ 追加
+      </button>
+    </div>
+    <div id="settings-routine-list"></div>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #F0F0F0;">
+      <div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:12px;">その他の設定</div>
+      <button id="display-range-btn2"
+        style="width:100%;padding:14px;border-radius:14px;background:#fff;border:1.5px solid #E0E0E0;font-size:14px;color:#424242;cursor:pointer;font-family:sans-serif;text-align:left;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">📅</span>
+        <span style="flex:1;">カレンダー表示期間を設定</span>
+        <span id="display-range-lbl" style="font-size:12px;color:#9E9E9E;">設定なし</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
 <button class="fab" id="fab-btn">＋ ルーティーンを追加</button>
 
 <div class="modal-bg" id="modal" style="display:none">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-ttl">新しいルーティーン</div>
+    <div class="modal-ttl" id="modal-ttl">新しいルーティーン</div>
     <div class="fl"><label>名前</label><input id="m-name" placeholder="例：筋トレ"/></div>
     <div class="fl"><label>アイコン（絵文字）</label><div class="epick" id="epick"></div></div>
     <div class="fl"><label>カラー</label><div class="cpick" id="cpick"></div></div>
@@ -324,6 +351,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
       </div>
     </div>
     <div class="fl"><label>目標時間（分）</label><input id="m-dur" type="number" min="1" max="180" placeholder="例：30"/></div>
+    <div class="fl">
+      <label>実施期間（省略可）</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="m-start-date" type="date" style="flex:1;padding:10px 12px;font-size:13px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
+        <span style="color:#9E9E9E;font-size:13px;">〜</span>
+        <input id="m-end-date" type="date" style="flex:1;padding:10px 12px;font-size:13px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
+      </div>
+      <div style="font-size:11px;color:#BDBDBD;margin-top:4px;">設定した期間だけこのルーティーンが表示されます</div>
+    </div>
 
     <div class="fl">
       <label>繰り返し</label>
@@ -409,6 +445,33 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 
 
 
+<!-- DISPLAY RANGE MODAL -->
+<div class="modal-bg" id="display-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">表示期間を設定</div>
+    <p style="font-size:13px;color:#9E9E9E;margin-bottom:16px;">カレンダーに表示する期間を絞り込めます</p>
+    <div class="fl">
+      <label>開始日（省略可）</label>
+      <input id="display-start" type="date" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
+    </div>
+    <div class="fl">
+      <label>終了日（省略可）</label>
+      <input id="display-end" type="date" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button id="display-clear"
+        style="flex:1;padding:13px;border-radius:14px;background:#F5F5F5;color:#9E9E9E;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+        リセット
+      </button>
+      <button id="display-save"
+        style="flex:2;padding:13px;border-radius:14px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+        設定する
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- DAY DETAIL MODAL -->
 <div class="modal-bg" id="day-detail-modal" style="display:none">
   <div class="modal">
@@ -493,6 +556,12 @@ const today=new Date();
 
 // ---- 繰り返し判定 ----
 function isActiveToday(r){
+  // 期間チェック
+  if(r.startDate || r.endDate){
+    const td = todayKey;
+    if(r.startDate && td < r.startDate) return false;
+    if(r.endDate && td > r.endDate) return false;
+  }
   const rep=r.repeat;
   if(!rep||rep.type==='everyday') return true;
   const dow=today.getDay();
@@ -542,6 +611,7 @@ const LS_ACTIVE_M  = 'mr_active_mode_v1';
 const LS_DONE_DATE = 'mr_done_date_v1';  // チェック状態は当日のみ保持
 const LS_NEXT_IDS  = 'mr_next_ids_v1';
 const LS_DAY_TODOS = 'mr_day_todos_v1'; // 日付別Todo
+const LS_DISPLAY  = 'mr_display_v1';    // 表示期間設定
 
 const todayKey = new Date().toISOString().split('T')[0];
 
@@ -594,6 +664,28 @@ function loadAll(){
 }
 // ============ END PERSISTENCE ============
 
+// 表示期間設定
+let displayRange = {
+  startDate: null,  // null=制限なし (YYYY-MM-DD)
+  endDate: null,
+};
+function loadDisplayRange(){
+  try{
+    const v = localStorage.getItem(LS_DISPLAY);
+    if(v) displayRange = JSON.parse(v);
+  }catch(e){}
+}
+function saveDisplayRange(){
+  try{ localStorage.setItem(LS_DISPLAY, JSON.stringify(displayRange)); }catch(e){}
+}
+function isInDisplayRange(r){
+  if(!displayRange.startDate && !displayRange.endDate) return true;
+  // 開始・終了日付のチェック（ルーティーンの追加日ベース）
+  // ここではルーティーン自体には追加日がないので、
+  // ユーザーが設定した「表示する日付範囲」でカレンダーをフィルタする
+  return true; // ルーティーンカード表示には影響しない
+}
+
 let routines=[];
 let nextId=1,selEmoji=EMOJIS[0],selColor=COLORS[0],notifOn=false;
 let selRT='everyday', selDays=[1,3,5], selWN=3, selInterval=2;
@@ -615,6 +707,64 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.getElementById('view-'+t.dataset.tab).classList.add('active');
     if(t.dataset.tab==='calendar') drawCal();
     if(t.dataset.tab==='report') renderReport();
+    if(t.dataset.tab==='settings') renderSettingsList();
+  });
+});
+
+function renderSettingsList(){
+  const list = document.getElementById('settings-routine-list');
+  list.innerHTML = '';
+  if(!routines.length){
+    list.innerHTML = '<div style="color:#9E9E9E;font-size:13px;text-align:center;padding:24px 0;">ルーティーンがありません</div>';
+    return;
+  }
+  // 時間帯ごとにグループ化
+  const periods = [{key:'morning',label:'🌅 朝'},{key:'afternoon',label:'☀️ 昼'},{key:'evening',label:'🌙 夜'}];
+  periods.forEach(p=>{
+    const items = routines.filter(r=>r.period===p.key);
+    if(!items.length) return;
+    const hdr = document.createElement('div');
+    hdr.style.cssText='font-size:12px;font-weight:700;color:#9E9E9E;padding:10px 4px 6px;';
+    hdr.textContent = p.label;
+    list.appendChild(hdr);
+    items.forEach(r=>{
+      const card = document.createElement('div');
+      card.style.cssText='background:#fff;border-radius:14px;border:1.5px solid #F0F0F0;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;';
+      const today2 = todayKey;
+      const isExpired = r.endDate && today2 > r.endDate;
+      const notStarted = r.startDate && today2 < r.startDate;
+      const statusBadge = isExpired
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#F5F5F5;color:#9E9E9E;">終了</span>'
+        : notStarted
+        ? '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#E3F2FD;color:#1565C0;">開始前</span>'
+        : '<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:#E8F5E9;color:#2E7D32;">実施中</span>';
+      const periodStr = (r.startDate || r.endDate)
+        ? '<div style="font-size:10px;color:#BDBDBD;margin-top:2px;">' + (r.startDate||'') + ' 〜 ' + (r.endDate||'') + '</div>'
+        : '';
+      card.innerHTML = '<div style="width:40px;height:40px;border-radius:12px;background:'+r.color.bg+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+r.emoji+'</div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:14px;font-weight:500;color:#212121;">'+r.name+'</span>'+statusBadge+'</div>'
+        + '<div style="font-size:11px;color:#BDBDBD;margin-top:2px;">'+r.time+(r.duration?' · '+r.duration+'分':'')+' · '+repeatLabel(r)+'</div>'
+        + periodStr
+        + '</div>'
+        + '<button class="r-edit-btn" style="flex-shrink:0;">✏️</button>'
+        + '<button class="r-del-btn" style="flex-shrink:0;">✕</button>';
+      card.querySelector('.r-edit-btn').onclick = ()=>openRoutineModal(r);
+      card.querySelector('.r-del-btn').onclick = ()=>showDeleteConfirm(r);
+      list.appendChild(card);
+    });
+  });
+  // 表示期間ラベル更新
+  updateDisplayBadge();
+}
+
+// display-range-btn2のイベント
+document.addEventListener('DOMContentLoaded',()=>{
+  const btn2 = document.getElementById('display-range-btn2');
+  if(btn2) btn2.addEventListener('click',()=>{
+    document.getElementById('display-start').value = displayRange.startDate || '';
+    document.getElementById('display-end').value = displayRange.endDate || '';
+    document.getElementById('display-modal').style.display='flex';
   });
 });
 
@@ -694,6 +844,7 @@ function makeCard(r){
       </div>
     </div>
     <div class="check-btn${r.done?' done':''}">${r.done?'✓':''}</div>
+    <button class="r-edit-btn" title="編集">✏️</button>
     <button class="r-del-btn" title="削除">✕</button>`;
   card.querySelector('.check-btn').addEventListener('click',e=>{
     e.stopPropagation(); r.done=!r.done;
@@ -702,6 +853,10 @@ function makeCard(r){
     setTimeout(()=>btn.classList.remove('pop'),250);
     saveAll();
     renderToday(); updateStats();
+  });
+  card.querySelector('.r-edit-btn').addEventListener('click',e=>{
+    e.stopPropagation();
+    openRoutineModal(r);
   });
   card.querySelector('.r-del-btn').addEventListener('click',e=>{
     e.stopPropagation();
@@ -822,14 +977,60 @@ function drawCal(){
     else if(data.pct===100) c.classList.add('c-full');
     else if(data.pct>0) c.classList.add('c-partial');
     else c.classList.add('c-miss');
+    // 表示期間外はグレーアウト
+    const cellDate = dateKey(calY,calM,d);
+    const outOfRange = (displayRange.startDate && cellDate < displayRange.startDate) ||
+                       (displayRange.endDate && cellDate > displayRange.endDate);
+    if(outOfRange){
+      c.className='cal-cell c-future';
+      c.style.opacity='0.35';
+    }
     c.innerHTML=`<div class="cal-num">${d}</div>${!data.today?`<div class="cal-bar-small"></div>`:''}`;
-    c.style.cursor='pointer';
-    c.addEventListener('click',()=>showDayDetail(calY,calM,d));
+    if(!outOfRange){
+      c.style.cursor='pointer';
+      c.addEventListener('click',()=>showDayDetail(calY,calM,d));
+    }
     grid.appendChild(c);
   }
 }
 document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();});
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
+
+// 表示期間設定
+document.getElementById('display-range-btn').addEventListener('click',()=>{
+  document.getElementById('display-start').value = displayRange.startDate || '';
+  document.getElementById('display-end').value = displayRange.endDate || '';
+  document.getElementById('display-modal').style.display='flex';
+});
+document.getElementById('display-save').addEventListener('click',()=>{
+  displayRange.startDate = document.getElementById('display-start').value || null;
+  displayRange.endDate = document.getElementById('display-end').value || null;
+  saveDisplayRange();
+  document.getElementById('display-modal').style.display='none';
+  // カレンダーを再描画してバッジ更新
+  updateDisplayBadge();
+  drawCal();
+});
+document.getElementById('display-clear').addEventListener('click',()=>{
+  displayRange = {startDate:null, endDate:null};
+  saveDisplayRange();
+  document.getElementById('display-start').value='';
+  document.getElementById('display-end').value='';
+  document.getElementById('display-modal').style.display='none';
+  updateDisplayBadge();
+  drawCal();
+});
+document.getElementById('display-modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('display-modal'))
+    document.getElementById('display-modal').style.display='none';
+});
+function updateDisplayBadge(){
+  const active = displayRange.startDate || displayRange.endDate;
+  const lbl = document.getElementById('display-range-lbl');
+  if(lbl) lbl.textContent = active
+    ? (displayRange.startDate||'') + ' 〜 ' + (displayRange.endDate||'')
+    : '設定なし';
+}
 
 // ======= 日付別Todo =======
 function getDayTodos(dateStr){
@@ -1115,33 +1316,96 @@ document.getElementById('tog-row').addEventListener('click',()=>{
   document.getElementById('tog-lbl').textContent=notifOn?'通知オン':'通知オフ';
   document.getElementById('ntrow').style.display=notifOn?'flex':'none';
 });
-document.getElementById('fab-btn').addEventListener('click',()=>{
-  notifOn=false; selRT='everyday'; selDays=[1,3,5]; wn=3;
-  document.getElementById('tog-trk').className='tog-track';
-  document.getElementById('tog-lbl').textContent='通知オフ';
-  document.getElementById('ntrow').style.display='none';
-  document.getElementById('m-name').value='';
-  document.getElementById('m-dur').value='';
-  document.querySelectorAll('.rt-btn').forEach(b=>b.classList.toggle('sel',b.dataset.rt==='everyday'));
-  showSub('everyday');
+let editingRoutineId = null; // 編集中のルーティーンID（nullは新規追加）
+
+function openRoutineModal(r=null){
+  editingRoutineId = r ? r.id : null;
+  document.getElementById('modal-ttl').textContent = r ? 'ルーティーンを編集' : '新しいルーティーン';
+  document.getElementById('modal-save').textContent = r ? '更新する 💚' : '保存する 💚';
+
+  if(r){
+    // 編集モード: 既存データを設定
+    selEmoji = r.emoji;
+    selColor = r.color;
+    notifOn = r.notif || false;
+    selRT = r.repeat?.type || 'everyday';
+    selDays = r.repeat?.days || [1,3,5];
+    wn = r.repeat?.n || 3;
+    document.getElementById('m-name').value = r.name;
+    document.getElementById('m-dur').value = r.duration || '';
+    document.getElementById('m-start-date').value = r.startDate || '';
+    document.getElementById('m-end-date').value = r.endDate || '';
+    document.getElementById('m-period').value = r.period;
+    document.getElementById('m-time').value = r.time;
+    document.getElementById('tog-trk').className = 'tog-track' + (notifOn?' on':'');
+    document.getElementById('tog-lbl').textContent = notifOn ? '通知オン' : '通知オフ';
+    document.getElementById('ntrow').style.display = notifOn ? 'flex' : 'none';
+    if(r.ntime) document.getElementById('m-ntime').value = r.ntime;
+    document.querySelectorAll('.rt-btn').forEach(b=>b.classList.toggle('sel',b.dataset.rt===selRT));
+    showSub(selRT);
+    if(selRT==='weekdays'){
+      document.querySelectorAll('.dp-btn').forEach(b=>b.classList.toggle('sel',selDays.includes(parseInt(b.dataset.d))));
+    }
+    if(selRT==='weekly_n'){ document.getElementById('wn-v').textContent=wn; }
+    if(selRT==='interval' && r.repeat?.n){ document.getElementById('interval-v').value=r.repeat.n; }
+    if(selRT==='monthly' && r.repeat?.mtype){
+      document.getElementById('monthly-type').value = r.repeat.mtype;
+      updateMonthlySub();
+      if(r.repeat.mtype==='date') document.getElementById('monthly-date-v').value = r.repeat.date;
+      else{
+        document.getElementById('monthly-nth').value = r.repeat.nth;
+        document.getElementById('monthly-wd').value = r.repeat.wd;
+      }
+    }
+  } else {
+    // 新規モード
+    notifOn=false; selRT='everyday'; selDays=[1,3,5]; wn=3;
+    document.getElementById('tog-trk').className='tog-track';
+    document.getElementById('tog-lbl').textContent='通知オフ';
+    document.getElementById('ntrow').style.display='none';
+    document.getElementById('m-name').value='';
+    document.getElementById('m-dur').value='';
+    document.getElementById('m-start-date').value='';
+    document.getElementById('m-end-date').value='';
+    document.querySelectorAll('.rt-btn').forEach(b=>b.classList.toggle('sel',b.dataset.rt==='everyday'));
+    showSub('everyday');
+  }
   buildPickers();
   document.getElementById('modal').style.display='flex';
-});
+}
+
+document.getElementById('fab-btn').addEventListener('click',()=>openRoutineModal());
 document.getElementById('modal').addEventListener('click',e=>{
   if(e.target===document.getElementById('modal')) document.getElementById('modal').style.display='none';
 });
 document.getElementById('modal-save').addEventListener('click',()=>{
   const name=document.getElementById('m-name').value.trim();
   if(!name){document.getElementById('m-name').focus();return;}
-  routines.push({id:nextId++,name,emoji:selEmoji,color:selColor,
+  const data = {
+    name, emoji:selEmoji, color:selColor,
     period:document.getElementById('m-period').value,
     time:document.getElementById('m-time').value,
     duration:parseInt(document.getElementById('m-dur').value)||0,
-    done:false,notif:notifOn,ntime:document.getElementById('m-ntime').value,
-    repeat:buildRepeatObj()});
+    notif:notifOn, ntime:document.getElementById('m-ntime').value,
+    repeat:buildRepeatObj(),
+    startDate: document.getElementById('m-start-date').value || null,
+    endDate:   document.getElementById('m-end-date').value || null,
+  };
+  if(editingRoutineId !== null){
+    // 編集モード: 既存ルーティーンを更新
+    const idx = routines.findIndex(r=>r.id===editingRoutineId);
+    if(idx !== -1){
+      routines[idx] = {...routines[idx], ...data};
+    }
+  } else {
+    // 新規追加
+    routines.push({id:nextId++, ...data, done:false});
+  }
   document.getElementById('modal').style.display='none';
   saveAll();
   renderToday();
+  // 設定タブが開いていたら一覧を更新
+  if(document.getElementById('view-settings').classList.contains('active')) renderSettingsList();
 });
 
 
@@ -1403,6 +1667,7 @@ function updateNotifBanner(perm){
 
 // ---- BOOT ----
 loadAll();
+loadDisplayRange();
 if(Notification.permission === 'granted'){
   initSW().then(() => { setTimeout(scheduleNotifications, 500); });
   document.getElementById('notif-banner').style.display='none';
