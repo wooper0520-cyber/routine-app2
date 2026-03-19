@@ -412,6 +412,27 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
   </div>
 </div>
 
+
+
+<!-- MODE MODAL -->
+<div class="mode-modal-bg" id="mode-modal" style="display:none">
+  <div class="mode-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">ルーティーンモード</div>
+    <p style="font-size:13px;color:#9E9E9E;margin-bottom:14px;">状況に合わせてモードを切り替えると、対象ルーティーンだけ表示されます。</p>
+    <div id="mode-list"></div>
+    <div class="mode-add-row">
+      <input id="mode-name-inp" placeholder="新しいモード名（例：週末）"/>
+      <button id="mode-add-btn">作成</button>
+    </div>
+    <div class="mode-routine-picker" id="mode-routine-picker" style="display:none">
+      <div class="mode-routine-picker-title" id="mrp-title">含めるルーティーンを選択</div>
+      <div id="mrp-list"></div>
+      <button style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;" id="mrp-save">保存する 💚</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const EMOJIS=['💧','🏃','🧘','📚','✍️','🍎','🛌','🎯','💪','🧠','🎵','🌿','☕','🥗','🚴','🤸','🪥','🧴'];
 const COLORS=[
@@ -607,7 +628,6 @@ function renderToday(){
     sec.style.display='none';
   }
   updateStats();
-  saveAll();
 }
 
 function makeCard(r){
@@ -630,6 +650,7 @@ function makeCard(r){
     if(r.done&&r.repeat&&r.repeat.type==='weekly_n') r.repeat.doneThisWeek=(r.repeat.doneThisWeek||0)+1;
     const btn=e.currentTarget; btn.classList.add('pop');
     setTimeout(()=>btn.classList.remove('pop'),250);
+    saveAll();
     renderToday(); updateStats();
   });
   return card;
@@ -1059,40 +1080,17 @@ function updateNotifBanner(perm){
 // ============ END NOTIFICATIONS ============
 
 // ---- BOOT ----
-try { loadAll(); } catch(e) { console.error('loadAll error:', e); }
-// 通知許可済みなら SW 起動 & スケジュール
-try {
-  if(Notification.permission === 'granted'){
-    initSW().then(() => { setTimeout(scheduleNotifications, 500); });
-    document.getElementById('notif-banner').style.display='none';
-  } else if(Notification.permission === 'denied'){
-    updateNotifBanner('denied');
-  }
-} catch(e) { console.error('notification error:', e); }
-try { renderModeBar(); } catch(e) { console.error('renderModeBar error:', e); }
-try { renderTodos(); } catch(e) { console.error('renderTodos error:', e); }
-try { renderToday(); } catch(e) { console.error('renderToday error:', e); }
+loadAll();
+if(Notification.permission === 'granted'){
+  initSW().then(() => { setTimeout(scheduleNotifications, 500); });
+  document.getElementById('notif-banner').style.display='none';
+} else if(Notification.permission === 'denied'){
+  updateNotifBanner('denied');
+}
+renderModeBar();
+renderTodos();
+renderToday();
 
 </script>
-
-<!-- MODE MODAL -->
-<div class="mode-modal-bg" id="mode-modal" style="display:none">
-  <div class="mode-modal">
-    <div class="modal-handle"></div>
-    <div class="modal-ttl">ルーティーンモード</div>
-    <p style="font-size:13px;color:#9E9E9E;margin-bottom:14px;">状況に合わせてモードを切り替えると、対象ルーティーンだけ表示されます。</p>
-    <div id="mode-list"></div>
-    <div class="mode-add-row">
-      <input id="mode-name-inp" placeholder="新しいモード名（例：週末）"/>
-      <button id="mode-add-btn">作成</button>
-    </div>
-    <div class="mode-routine-picker" id="mode-routine-picker" style="display:none">
-      <div class="mode-routine-picker-title" id="mrp-title">含めるルーティーンを選択</div>
-      <div id="mrp-list"></div>
-      <button style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;" id="mrp-save">保存する 💚</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
