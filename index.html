@@ -320,12 +320,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
     <div class="fl"><label>時間帯 / 時刻</label>
       <div class="trow">
         <select id="m-period"><option value="morning">🌅 朝</option><option value="afternoon">☀️ 昼</option><option value="evening">🌙 夜</option></select>
-        <select id="m-time">
-          <option>06:00</option><option>06:30</option><option>07:00</option><option>07:30</option>
-          <option>08:00</option><option>08:30</option><option>09:00</option><option>12:00</option>
-          <option>12:30</option><option>13:00</option><option>18:00</option><option>19:00</option>
-          <option>20:00</option><option>21:00</option><option>22:00</option><option>23:00</option>
-        </select>
+        <input id="m-time" type="time" value="07:00" style="flex:1;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;font-family:'Noto Sans JP',sans-serif;outline:none;"/>
       </div>
     </div>
     <div class="fl"><label>目標時間（分）</label><input id="m-dur" type="number" min="1" max="180" placeholder="例：30"/></div>
@@ -404,11 +399,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
         </div>
         <div class="ntrow" id="ntrow" style="display:none">
           <span style="font-size:12px;color:#9E9E9E;white-space:nowrap;">通知時刻</span>
-          <select id="m-ntime" style="flex:1;padding:6px 10px;font-size:13px;border:1px solid #EEEEEE;border-radius:8px;background:#fff;font-family:'Noto Sans JP',sans-serif;">
-            <option>05:55</option><option>06:00</option><option>06:30</option><option>07:00</option>
-            <option>07:30</option><option>08:00</option><option>11:55</option><option>12:00</option>
-            <option>17:55</option><option>18:00</option><option>20:55</option><option>21:00</option>
-          </select>
+          <input id="m-ntime" type="time" value="07:00" style="flex:1;padding:6px 10px;font-size:13px;border:1px solid #EEEEEE;border-radius:8px;background:#fff;font-family:'Noto Sans JP',sans-serif;outline:none;"/>
         </div>
       </div>
     </div>
