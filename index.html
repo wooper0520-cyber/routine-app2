@@ -421,8 +421,32 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
     <div class="modal-ttl" id="day-detail-title"></div>
     <div id="day-detail-subtitle" style="font-size:12px;color:#9E9E9E;margin:-10px 0 14px;"></div>
     <div id="day-detail-list"></div>
+
+    <!-- Todo セクション -->
+    <div id="day-todo-section" style="margin-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;color:#616161;">📋 Todoリスト</span>
+        <button id="day-todo-add-btn" style="font-size:12px;padding:4px 12px;border-radius:99px;border:1.5px solid #E0E0E0;background:#fff;color:#9E9E9E;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">＋ 追加</button>
+      </div>
+      <div id="day-todo-input-wrap" style="display:none;margin-bottom:8px;">
+        <div class="todo-input-row">
+          <input id="day-todo-inp" placeholder="この日のTodo…"/>
+          <button id="day-todo-inp-save">追加</button>
+        </div>
+      </div>
+      <div id="day-todo-list"></div>
+    </div>
+
+    <!-- ルーティーン追加ボタン -->
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button id="day-add-routine-btn"
+        style="flex:1;padding:12px;border-radius:14px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #C8E6C9;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
+        ＋ ルーティーンを追加
+      </button>
+    </div>
+
     <button onclick="document.getElementById('day-detail-modal').style.display='none'"
-      style="width:100%;padding:13px;border-radius:14px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-top:12px;">
+      style="width:100%;padding:13px;border-radius:14px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-top:8px;">
       閉じる
     </button>
   </div>
@@ -522,6 +546,7 @@ const LS_MODES     = 'mr_modes_v1';
 const LS_ACTIVE_M  = 'mr_active_mode_v1';
 const LS_DONE_DATE = 'mr_done_date_v1';  // チェック状態は当日のみ保持
 const LS_NEXT_IDS  = 'mr_next_ids_v1';
+const LS_DAY_TODOS = 'mr_day_todos_v1'; // 日付別Todo
 
 const todayKey = new Date().toISOString().split('T')[0];
 
@@ -778,6 +803,21 @@ function drawCal(){
 document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();});
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
 
+// ======= 日付別Todo =======
+function getDayTodos(dateStr){
+  try{
+    const all = JSON.parse(localStorage.getItem(LS_DAY_TODOS)||'{}');
+    return all[dateStr] || [];
+  }catch(e){ return []; }
+}
+function saveDayTodos(dateStr, todos){
+  try{
+    const all = JSON.parse(localStorage.getItem(LS_DAY_TODOS)||'{}');
+    all[dateStr] = todos;
+    localStorage.setItem(LS_DAY_TODOS, JSON.stringify(all));
+  }catch(e){}
+}
+
 function showDayDetail(y,m,d){
   const dt=new Date(y,m,d); dt.setHours(0,0,0,0);
   const tod=new Date(today); tod.setHours(0,0,0,0);
@@ -833,6 +873,70 @@ function showDayDetail(y,m,d){
     });
   }
   modal.style.display='flex';
+
+  // 日付をwindowに保存（追加ボタンから参照）
+  window._dayDetailDate = {y,m,d,isFuture,isToday,dateStr: dateKey(y,m,d)};
+
+  // Todoセクション描画
+  renderDayTodoList(dateKey(y,m,d));
+
+  // Todo追加ボタン
+  const addBtn = document.getElementById('day-todo-add-btn');
+  addBtn.onclick = () => {
+    const wrap = document.getElementById('day-todo-input-wrap');
+    wrap.style.display = wrap.style.display==='none' ? 'block' : 'none';
+    if(wrap.style.display==='block') setTimeout(()=>document.getElementById('day-todo-inp').focus(),50);
+  };
+  document.getElementById('day-todo-inp-save').onclick = () => saveDayTodoItem(dateKey(y,m,d));
+  document.getElementById('day-todo-inp').onkeydown = (e) => { if(e.key==='Enter') saveDayTodoItem(dateKey(y,m,d)); };
+
+  // ルーティーン追加ボタン（今日タブに切り替えてモーダルを開く）
+  document.getElementById('day-add-routine-btn').onclick = () => {
+    document.getElementById('day-detail-modal').style.display='none';
+    document.getElementById('fab-btn').click();
+  };
+}
+
+function renderDayTodoList(dateStr){
+  const todos = getDayTodos(dateStr);
+  const list = document.getElementById('day-todo-list');
+  list.innerHTML = '';
+  if(!todos.length){
+    list.innerHTML = '<div style="color:#BDBDBD;font-size:12px;padding:4px 0;">Todoはありません</div>';
+    return;
+  }
+  todos.forEach((t,i) => {
+    const card = document.createElement('div');
+    card.className = 'todo-card' + (t.done?' done-todo':'');
+    card.innerHTML = `
+      <div class="todo-check${t.done?' done':''}" style="cursor:pointer;">${t.done?'✓':''}</div>
+      <div class="todo-text">${t.text}</div>
+      <button class="todo-del">✕</button>`;
+    card.querySelector('.todo-check').onclick = () => {
+      const ts = getDayTodos(dateStr);
+      ts[i].done = !ts[i].done;
+      saveDayTodos(dateStr, ts);
+      renderDayTodoList(dateStr);
+    };
+    card.querySelector('.todo-del').onclick = () => {
+      const ts = getDayTodos(dateStr).filter((_,j)=>j!==i);
+      saveDayTodos(dateStr, ts);
+      renderDayTodoList(dateStr);
+    };
+    list.appendChild(card);
+  });
+}
+
+function saveDayTodoItem(dateStr){
+  const inp = document.getElementById('day-todo-inp');
+  const text = inp.value.trim();
+  if(!text) return;
+  const todos = getDayTodos(dateStr);
+  todos.push({text, done:false});
+  saveDayTodos(dateStr, todos);
+  inp.value = '';
+  document.getElementById('day-todo-input-wrap').style.display = 'none';
+  renderDayTodoList(dateStr);
 }
 document.getElementById('day-detail-modal').addEventListener('click',e=>{
   if(e.target===document.getElementById('day-detail-modal'))
