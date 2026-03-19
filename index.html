@@ -322,15 +322,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
       </button>
     </div>
     <div id="settings-routine-list"></div>
-    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #F0F0F0;">
-      <div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:12px;">その他の設定</div>
-      <button id="display-range-btn2"
-        style="width:100%;padding:14px;border-radius:14px;background:#fff;border:1.5px solid #E0E0E0;font-size:14px;color:#424242;cursor:pointer;font-family:sans-serif;text-align:left;display:flex;align-items:center;gap:10px;">
-        <span style="font-size:18px;">📅</span>
-        <span style="flex:1;">カレンダー表示期間を設定</span>
-        <span id="display-range-lbl" style="font-size:12px;color:#9E9E9E;">設定なし</span>
-      </button>
-    </div>
+
   </div>
 </div>
 
@@ -444,33 +436,6 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 </div>
 
 
-
-<!-- DISPLAY RANGE MODAL -->
-<div class="modal-bg" id="display-modal" style="display:none">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-ttl">表示期間を設定</div>
-    <p style="font-size:13px;color:#9E9E9E;margin-bottom:16px;">カレンダーに表示する期間を絞り込めます</p>
-    <div class="fl">
-      <label>開始日（省略可）</label>
-      <input id="display-start" type="date" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
-    </div>
-    <div class="fl">
-      <label>終了日（省略可）</label>
-      <input id="display-end" type="date" style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;outline:none;"/>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px;">
-      <button id="display-clear"
-        style="flex:1;padding:13px;border-radius:14px;background:#F5F5F5;color:#9E9E9E;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
-        リセット
-      </button>
-      <button id="display-save"
-        style="flex:2;padding:13px;border-radius:14px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
-        設定する
-      </button>
-    </div>
-  </div>
-</div>
 
 <!-- DAY DETAIL MODAL -->
 <div class="modal-bg" id="day-detail-modal" style="display:none">
@@ -611,7 +576,7 @@ const LS_ACTIVE_M  = 'mr_active_mode_v1';
 const LS_DONE_DATE = 'mr_done_date_v1';  // チェック状態は当日のみ保持
 const LS_NEXT_IDS  = 'mr_next_ids_v1';
 const LS_DAY_TODOS = 'mr_day_todos_v1'; // 日付別Todo
-const LS_DISPLAY  = 'mr_display_v1';    // 表示期間設定
+
 
 const todayKey = new Date().toISOString().split('T')[0];
 
@@ -663,28 +628,6 @@ function loadAll(){
   }catch(e){ console.warn('localStorage load error', e); }
 }
 // ============ END PERSISTENCE ============
-
-// 表示期間設定
-let displayRange = {
-  startDate: null,  // null=制限なし (YYYY-MM-DD)
-  endDate: null,
-};
-function loadDisplayRange(){
-  try{
-    const v = localStorage.getItem(LS_DISPLAY);
-    if(v) displayRange = JSON.parse(v);
-  }catch(e){}
-}
-function saveDisplayRange(){
-  try{ localStorage.setItem(LS_DISPLAY, JSON.stringify(displayRange)); }catch(e){}
-}
-function isInDisplayRange(r){
-  if(!displayRange.startDate && !displayRange.endDate) return true;
-  // 開始・終了日付のチェック（ルーティーンの追加日ベース）
-  // ここではルーティーン自体には追加日がないので、
-  // ユーザーが設定した「表示する日付範囲」でカレンダーをフィルタする
-  return true; // ルーティーンカード表示には影響しない
-}
 
 let routines=[];
 let nextId=1,selEmoji=EMOJIS[0],selColor=COLORS[0],notifOn=false;
@@ -754,19 +697,10 @@ function renderSettingsList(){
       list.appendChild(card);
     });
   });
-  // 表示期間ラベル更新
-  updateDisplayBadge();
 }
 
 // display-range-btn2のイベント
-document.addEventListener('DOMContentLoaded',()=>{
-  const btn2 = document.getElementById('display-range-btn2');
-  if(btn2) btn2.addEventListener('click',()=>{
-    document.getElementById('display-start').value = displayRange.startDate || '';
-    document.getElementById('display-end').value = displayRange.endDate || '';
-    document.getElementById('display-modal').style.display='flex';
-  });
-});
+
 
 // STATS
 function updateStats(){
@@ -977,19 +911,9 @@ function drawCal(){
     else if(data.pct===100) c.classList.add('c-full');
     else if(data.pct>0) c.classList.add('c-partial');
     else c.classList.add('c-miss');
-    // 表示期間外はグレーアウト
-    const cellDate = dateKey(calY,calM,d);
-    const outOfRange = (displayRange.startDate && cellDate < displayRange.startDate) ||
-                       (displayRange.endDate && cellDate > displayRange.endDate);
-    if(outOfRange){
-      c.className='cal-cell c-future';
-      c.style.opacity='0.35';
-    }
     c.innerHTML=`<div class="cal-num">${d}</div>${!data.today?`<div class="cal-bar-small"></div>`:''}`;
-    if(!outOfRange){
-      c.style.cursor='pointer';
-      c.addEventListener('click',()=>showDayDetail(calY,calM,d));
-    }
+    c.style.cursor='pointer';
+    c.addEventListener('click',()=>showDayDetail(calY,calM,d));
     grid.appendChild(c);
   }
 }
@@ -997,13 +921,7 @@ document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0)
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
 
 
-function updateDisplayBadge(){
-  const active = displayRange.startDate || displayRange.endDate;
-  const lbl = document.getElementById('display-range-lbl');
-  if(lbl) lbl.textContent = active
-    ? (displayRange.startDate||'') + ' 〜 ' + (displayRange.endDate||'')
-    : '設定なし';
-}
+
 
 // ======= 日付別Todo =======
 function getDayTodos(dateStr){
@@ -1640,7 +1558,6 @@ function updateNotifBanner(perm){
 
 // ---- BOOT ----
 loadAll();
-loadDisplayRange();
 if(Notification.permission === 'granted'){
   initSW().then(() => { setTimeout(scheduleNotifications, 500); });
   document.getElementById('notif-banner').style.display='none';
