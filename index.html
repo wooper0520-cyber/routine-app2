@@ -323,6 +323,23 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
     </div>
     <div id="settings-routine-list"></div>
 
+    <!-- バックアップ -->
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #F0F0F0;">
+      <div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:8px;">💾 データのバックアップ</div>
+      <p style="font-size:12px;color:#9E9E9E;margin-bottom:12px;">ルーティーン・Todo・設定を保存・復元できます</p>
+      <div style="display:flex;gap:8px;">
+        <button id="export-btn"
+          style="flex:1;padding:13px;border-radius:14px;background:#E3F2FD;color:#1565C0;border:1.5px solid #BBDEFB;font-size:13px;font-weight:700;cursor:pointer;font-family:sans-serif;">
+          📤 エクスポート
+        </button>
+        <button id="import-btn"
+          style="flex:1;padding:13px;border-radius:14px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #C8E6C9;font-size:13px;font-weight:700;cursor:pointer;font-family:sans-serif;">
+          📥 インポート
+        </button>
+      </div>
+      <input id="import-file-input" type="file" accept=".json" style="display:none;"/>
+      <div id="import-result" style="margin-top:8px;font-size:12px;color:#4CAF50;display:none;"></div>
+    </div>
   </div>
 </div>
 
@@ -699,6 +716,103 @@ function renderSettingsList(){
   });
 }
 
+// ======= バックアップ機能 =======
+function exportData(){
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    routines:  JSON.parse(localStorage.getItem(LS_ROUTINES)  || '[]'),
+    todos:     JSON.parse(localStorage.getItem(LS_TODOS)     || '[]'),
+    modes:     JSON.parse(localStorage.getItem(LS_MODES)     || '[]'),
+    activeMode: localStorage.getItem(LS_ACTIVE_M),
+    nextIds:   JSON.parse(localStorage.getItem(LS_NEXT_IDS)  || '{}'),
+    history:   JSON.parse(localStorage.getItem('mr_history_v1') || '{}'),
+    dayTodos:  JSON.parse(localStorage.getItem(LS_DAY_TODOS) || '{}'),
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = 'routine-backup-' + date + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.version || !data.routines){
+        showImportResult('❌ 無効なファイルです', '#E57373');
+        return;
+      }
+      // 確認ダイアログ
+      const bg = document.createElement('div');
+      bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;';
+      bg.innerHTML='<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:320px;text-align:center;">'
+        + '<div style="font-size:28px;margin-bottom:12px;">📥</div>'
+        + '<div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:8px;">データをインポートしますか？</div>'
+        + '<div style="font-size:13px;color:#9E9E9E;margin-bottom:4px;">バックアップ日時：' + (data.exportedAt ? data.exportedAt.split('T')[0] : '不明') + '</div>'
+        + '<div style="font-size:13px;color:#9E9E9E;margin-bottom:20px;">ルーティーン：' + data.routines.length + '件　既存データは上書きされます</div>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button id="imp-cancel" style="flex:1;padding:13px;border-radius:12px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:sans-serif;">キャンセル</button>'
+        + '<button id="imp-ok" style="flex:2;padding:13px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:sans-serif;">インポートする</button>'
+        + '</div></div>';
+      document.body.appendChild(bg);
+      document.getElementById('imp-cancel').onclick = () => bg.remove();
+      document.getElementById('imp-ok').onclick = () => {
+        // データを保存
+        localStorage.setItem(LS_ROUTINES,  JSON.stringify(data.routines));
+        localStorage.setItem(LS_TODOS,     JSON.stringify(data.todos || []));
+        localStorage.setItem(LS_MODES,     JSON.stringify(data.modes || []));
+        if(data.activeMode) localStorage.setItem(LS_ACTIVE_M, data.activeMode);
+        if(data.nextIds)    localStorage.setItem(LS_NEXT_IDS, JSON.stringify(data.nextIds));
+        if(data.history)    localStorage.setItem('mr_history_v1', JSON.stringify(data.history));
+        if(data.dayTodos)   localStorage.setItem(LS_DAY_TODOS, JSON.stringify(data.dayTodos));
+        // 再読み込み
+        loadAll();
+        renderModeBar();
+        renderTodos();
+        renderToday();
+        renderSettingsList();
+        bg.remove();
+        showImportResult('✅ インポートが完了しました（' + data.routines.length + '件）', '#4CAF50');
+      };
+      bg.addEventListener('click', e=>{ if(e.target===bg) bg.remove(); });
+    }catch(err){
+      showImportResult('❌ ファイルの読み込みに失敗しました', '#E57373');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showImportResult(msg, color){
+  const el = document.getElementById('import-result');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = color;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+  initBackupButtons();
+}
+
+// バックアップボタンのイベント登録（renderSettingsListから呼ぶ）
+function initBackupButtons(){
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const fileInput = document.getElementById('import-file-input');
+  if(exportBtn) exportBtn.onclick = exportData;
+  if(importBtn) importBtn.onclick = () => fileInput?.click();
+  if(fileInput) fileInput.onchange = e => {
+    const file = e.target.files[0];
+    if(file) importData(file);
+    fileInput.value = '';
+  };
+}
+
 // display-range-btn2のイベント
 
 
@@ -1064,27 +1178,107 @@ document.getElementById('day-detail-modal').addEventListener('click',e=>{
 });
 
 // REPORT
+function getPctForDate(y,m,d){
+  const dt=new Date(y,m,d); dt.setHours(0,0,0,0);
+  const tod=new Date(today); tod.setHours(0,0,0,0);
+  const isToday=(y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate());
+  const active=getRoutinesForDate(y,m,d);
+  if(!active.length) return null;
+  if(isToday) return active.length?Math.round(active.filter(r=>r.done).length/active.length*100):0;
+  if(dt>tod) return null; // 未来
+  const done=getDoneForDate(y,m,d);
+  return Math.round(active.filter(r=>done[r.id]).length/active.length*100);
+}
+
 function renderReport(){
   const wb=document.getElementById('week-bars'); wb.innerHTML='';
-  const active=routines.filter(r=>isActiveToday(r));
-  const todayPct=active.length?Math.round(active.filter(r=>r.done).length/active.length*100):0;
-  [{d:'月',p:100},{d:'火',p:100},{d:'水',p:75},{d:'木',p:100},{d:'金',p:0},{d:'土',p:100},{d:'今日',p:todayPct}].forEach(w=>{
-    const row=document.createElement('div'); row.className='bar-row2';
-    const col=w.p===0?'#E0E0E0':w.p===100?'#4CAF50':'#FFB300';
-    row.innerHTML=`<span class="bar-day2" style="width:24px">${w.d}</span>
-      <div class="bar-outer2"><div class="bar-in2" style="width:${w.p}%;background:${col}"></div></div>
-      <span class="bar-pct2">${w.p}%</span>`;
-    wb.appendChild(row);
-  });
+
+  // 今週（月〜今日）の実データ
+  const dayOfWeek=today.getDay(); // 0=日
+  const mondayOffset=dayOfWeek===0?-6:1-dayOfWeek;
+  const weekDays=[];
+  for(let i=0;i<7;i++){
+    const dt=new Date(today);
+    dt.setDate(today.getDate()+mondayOffset+i);
+    if(dt>today) break;
+    weekDays.push(dt);
+  }
+
+  if(!weekDays.length){
+    wb.innerHTML='<div style="color:#9E9E9E;font-size:13px;text-align:center;padding:16px;">データがありません</div>';
+  } else {
+    weekDays.forEach(dt=>{
+      const y=dt.getFullYear(),m=dt.getMonth(),d=dt.getDate();
+      const pct=getPctForDate(y,m,d);
+      const isToday2=(dt.toDateString()===today.toDateString());
+      const label=isToday2?'今日':DAYS[dt.getDay()];
+      const col=pct===null?'#F5F5F5':pct===0?'#E0E0E0':pct===100?'#4CAF50':'#FFB300';
+      const pctStr=pct===null?'-':pct+'%';
+      const row=document.createElement('div'); row.className='bar-row2';
+      row.innerHTML=`<span class="bar-day2" style="width:28px;font-weight:${isToday2?'700':'400'}">${label}</span>
+        <div class="bar-outer2"><div class="bar-in2" style="width:${pct||0}%;background:${col}"></div></div>
+        <span class="bar-pct2">${pctStr}</span>`;
+      wb.appendChild(row);
+    });
+  }
+
+  // 月間サマリー（実データ）
+  const y=today.getFullYear(), m=today.getMonth();
+  const dim=new Date(y,m+1,0).getDate();
+  let achievedDays=0, streak=0, maxStreak=0, curStreak=0, totalPct=0, countDays=0;
+  for(let d=1;d<=today.getDate();d++){
+    const pct=getPctForDate(y,m,d);
+    if(pct===null) continue;
+    countDays++;
+    totalPct+=pct;
+    if(pct===100){
+      achievedDays++;
+      curStreak++;
+      maxStreak=Math.max(maxStreak,curStreak);
+    } else {
+      curStreak=0;
+    }
+  }
+  const avgPct=countDays?Math.round(totalPct/countDays):0;
+  // KPIを更新
+  const kpiVals=document.querySelectorAll('.kpi-val');
+  if(kpiVals[0]) kpiVals[0].textContent=achievedDays;
+  if(kpiVals[1]) kpiVals[1].textContent=maxStreak;
+  if(kpiVals[2]) kpiVals[2].textContent=avgPct+'%';
+
+  // 継続ランキング（実データ：各ルーティーンの今月達成率）
   const rl=document.getElementById('rank-list'); rl.innerHTML='';
-  const rates=[92,88,85,77,70,65,60,55,50];
-  routines.forEach((r,i)=>{
+  if(!routines.length){
+    rl.innerHTML='<div style="color:#9E9E9E;font-size:13px;text-align:center;padding:16px;">ルーティーンがありません</div>';
+    return;
+  }
+  const ranked=routines.map(r=>{
+    let done=0,total=0;
+    for(let d=1;d<=today.getDate();d++){
+      const active=getRoutinesForDate(y,m,d);
+      if(!active.find(x=>x.id===r.id)) continue;
+      total++;
+      const isToday2=(d===today.getDate());
+      if(isToday2){ if(r.done) done++; }
+      else{ const doneMap=getDoneForDate(y,m,d); if(doneMap[r.id]) done++; }
+    }
+    const pct=total?Math.round(done/total*100):0;
+    return{r,pct,total};
+  }).filter(x=>x.total>0).sort((a,b)=>b.pct-a.pct);
+
+  if(!ranked.length){
+    rl.innerHTML='<div style="color:#9E9E9E;font-size:13px;text-align:center;padding:16px;">今月のデータがありません</div>';
+    return;
+  }
+  ranked.forEach(({r,pct},i)=>{
+    const col=pct===100?'#E8F5E9':pct>=50?'#FFF8E1':'#FFF3F3';
+    const textCol=pct===100?'#388E3C':pct>=50?'#E65100':'#C62828';
     const row=document.createElement('div'); row.className='rank-row';
     row.innerHTML=`<span class="rank-num">${i+1}</span>
       <span class="rank-emoji">${r.emoji}</span>
       <span class="rank-name">${r.name}</span>
       <span style="font-size:10px;color:#BDBDBD;margin-right:2px;">${repeatLabel(r)}</span>
-      <span class="rank-pill">${rates[i]||50}%</span>`;
+      <span class="rank-pill" style="background:${col};color:${textCol}">${pct}%</span>`;
     rl.appendChild(row);
   });
 }
