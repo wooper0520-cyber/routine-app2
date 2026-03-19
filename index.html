@@ -414,6 +414,19 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 
 
 
+<!-- DAY DETAIL MODAL -->
+<div class="modal-bg" id="day-detail-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl" id="day-detail-title"></div>
+    <div id="day-detail-list"></div>
+    <button onclick="document.getElementById('day-detail-modal').style.display='none'"
+      style="width:100%;padding:13px;border-radius:14px;background:#F5F5F5;color:#616161;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-top:12px;">
+      閉じる
+    </button>
+  </div>
+</div>
+
 <!-- MODE MODAL -->
 <div class="mode-modal-bg" id="mode-modal" style="display:none">
   <div class="mode-modal">
@@ -434,7 +447,16 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
 </div>
 
 <script>
-const EMOJIS=['💧','🏃','🧘','📚','✍️','🍎','🛌','🎯','💪','🧠','🎵','🌿','☕','🥗','🚴','🤸','🪥','🧴'];
+const EMOJI_CATEGORIES = [
+  { label:'🏃 運動・健康', emojis:['🏃','🚴','🤸','💪','🧘','🏋️','🤾','🏊','⛹️','🚶','🧗','🤺','⛷️','🏂','🤼','🥊'] },
+  { label:'🍎 食事・栄養', emojis:['🍎','🥗','🥤','💧','☕','🍵','🥦','🫐','🥕','🧃','🍳','🥑','🫚','🍇','🥩','🫙'] },
+  { label:'📚 学習・仕事', emojis:['📚','✍️','🧠','💻','📝','🎯','📖','🗒️','✏️','🔬','📊','🗂️','📐','🖊️','📌','🔭'] },
+  { label:'😴 睡眠・休息', emojis:['🛌','😴','🛁','🪥','🧴','🪞','🧹','🪴','🕯️','🛀','💤','🌙','⭐','🌛','🌜','🌝'] },
+  { label:'🎵 趣味・娯楽', emojis:['🎵','🎸','🎹','🎨','🎭','🎬','📷','🎲','♟️','🎯','🎻','🥁','🎤','🎧','🪗','🎺'] },
+  { label:'🌿 自然・気持ち', emojis:['🌿','🌸','🌞','🌈','🍀','🌻','🌺','🌱','🦋','🐾','🌊','🏔️','🌄','🍃','🌙','⛅'] },
+  { label:'❤️ その他', emojis:['❤️','⭐','🔥','✨','💫','🎉','🏆','👑','💎','🌟','💯','🙏','👏','💪','🤝','😊'] },
+];
+const EMOJIS = EMOJI_CATEGORIES.flatMap(c => c.emojis);
 const COLORS=[
   {bg:'#E8F5E9',accent:'#4CAF50',text:'#2E7D32'},
   {bg:'#E3F2FD',accent:'#2196F3',text:'#1565C0'},
@@ -510,6 +532,12 @@ function saveAll(){
     localStorage.setItem(LS_ACTIVE_M,  String(activeModeId));
     localStorage.setItem(LS_DONE_DATE, todayKey);
     localStorage.setItem(LS_NEXT_IDS,  JSON.stringify({r:nextId, t:nextTodoId, m:nextModeId}));
+    // 今日のdone状態をhistoryに保存
+    const hist = JSON.parse(localStorage.getItem('mr_history_v1')||'{}');
+    const doneMap = {};
+    routines.forEach(r=>{ if(r.done) doneMap[r.id]=true; });
+    hist[todayKey] = doneMap;
+    localStorage.setItem('mr_history_v1', JSON.stringify(hist));
   }catch(e){ console.warn('localStorage save error', e); }
 }
 
@@ -664,15 +692,65 @@ document.getElementById('inactive-toggle-btn').addEventListener('click',()=>{
 });
 
 // CALENDAR
+function dateKey(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function getRoutinesForDate(y,m,d){
+  // その日に有効なルーティーンを返す
+  const dt = new Date(y,m,d);
+  const dow = dt.getDay();
+  return routines.filter(r=>{
+    const rep=r.repeat;
+    if(!rep||rep.type==='everyday') return true;
+    if(rep.type==='weekdays') return rep.days.includes(dow);
+    if(rep.type==='interval'){
+      const start=new Date(rep.startDate); start.setHours(0,0,0,0);
+      const t=new Date(y,m,d); t.setHours(0,0,0,0);
+      const diff=Math.round((t-start)/(1000*60*60*24));
+      return diff>=0 && diff%rep.n===0;
+    }
+    if(rep.type==='monthly'){
+      if(rep.mtype==='date') return d===rep.date;
+      if(rep.mtype==='weekday'){
+        if(dow!==rep.wd) return false;
+        return Math.ceil(d/7)===rep.nth;
+      }
+    }
+    if(rep.type==='weekly_n') return true; // 表示上はtrueに
+    return true;
+  });
+}
+
+function getDoneForDate(y,m,d){
+  const key = dateKey(y,m,d);
+  try{
+    const saved = localStorage.getItem('mr_history_v1');
+    if(saved){
+      const hist = JSON.parse(saved);
+      return hist[key] || {};
+    }
+  }catch(e){}
+  return {};
+}
+
 function calData(y,m,d){
   const isCur=(today.getFullYear()===y&&today.getMonth()===m);
-  if(isCur&&d===today.getDate()){
-    const active=routines.filter(r=>isActiveToday(r));
-    return{pct:active.length?Math.round(active.filter(r=>r.done).length/active.length*100):0,today:true};
+  const isToday=(isCur&&d===today.getDate());
+  const dt=new Date(y,m,d);
+  const isFuture=dt>today&&!isToday;
+  if(isFuture) return null;
+
+  const active = getRoutinesForDate(y,m,d);
+  if(!active.length) return{pct:0,today:isToday};
+
+  if(isToday){
+    const doneCnt = active.filter(r=>r.done).length;
+    return{pct:Math.round(doneCnt/active.length*100),today:true};
   }
-  if(isCur&&d>today.getDate()) return null;
-  const fake=[100,100,75,100,0,100,50,100,100,100,80,100,100,100,50,100,100,100,100,83,66,100,0,100,100,50,100,100,100,100,100];
-  return{pct:fake[(d-1)%fake.length]||0};
+
+  // 過去の日付: historyから取得
+  const done = getDoneForDate(y,m,d);
+  const doneCnt = active.filter(r=>done[r.id]).length;
+  return{pct:Math.round(doneCnt/active.length*100),today:false};
 }
 function drawCal(){
   document.getElementById('cal-lbl').textContent=`${calY}年${MN[calM]}`;
@@ -689,11 +767,61 @@ function drawCal(){
     else if(data.pct>0) c.classList.add('c-partial');
     else c.classList.add('c-miss');
     c.innerHTML=`<div class="cal-num">${d}</div>${data&&!data.today?`<div class="cal-bar-small"></div>`:''}`;
+    if(data!==null){
+      c.style.cursor='pointer';
+      c.addEventListener('click',()=>showDayDetail(calY,calM,d));
+    }
     grid.appendChild(c);
   }
 }
 document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();});
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
+
+function showDayDetail(y,m,d){
+  const isToday=(y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate());
+  const active = getRoutinesForDate(y,m,d);
+  const done = isToday ? (() => { const o={}; routines.forEach(r=>{if(r.done)o[r.id]=true;}); return o; })()
+                       : getDoneForDate(y,m,d);
+
+  const modal = document.getElementById('day-detail-modal');
+  document.getElementById('day-detail-title').textContent =
+    `${y}年${MN[m]}${d}日（${DAYS[new Date(y,m,d).getDay()]}）`;
+
+  const list = document.getElementById('day-detail-list');
+  list.innerHTML = '';
+  if(!active.length){
+    list.innerHTML = '<div style="color:#9E9E9E;font-size:13px;padding:12px 0;">この日のルーティーンはありません</div>';
+  } else {
+    const doneCnt = active.filter(r=>done[r.id]).length;
+    const pct = Math.round(doneCnt/active.length*100);
+    list.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="flex:1;height:7px;background:#EEE;border-radius:99px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#66BB6A,#43A047);border-radius:99px;"></div>
+      </div>
+      <span style="font-size:13px;font-weight:700;color:#43A047;">${doneCnt}/${active.length} (${pct}%)</span>
+    </div>`;
+    active.forEach(r=>{
+      const isDone = !!done[r.id];
+      const row = document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F5F5F5;';
+      row.innerHTML=`
+        <div style="width:36px;height:36px;border-radius:10px;background:${r.color.bg};display:flex;align-items:center;justify-content:center;font-size:18px;">${r.emoji}</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:${isDone?'#9E9E9E':'#212121'};${isDone?'text-decoration:line-through;':''}">${r.name}</div>
+          <div style="font-size:11px;color:#BDBDBD;">${r.time}</div>
+        </div>
+        <div style="width:26px;height:26px;border-radius:50%;${isDone?'background:#4CAF50;border:2px solid #4CAF50;':'background:#fff;border:2px solid #E0E0E0;'}display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;">
+          ${isDone?'✓':''}
+        </div>`;
+      list.appendChild(row);
+    });
+  }
+  modal.style.display='flex';
+}
+document.getElementById('day-detail-modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('day-detail-modal'))
+    document.getElementById('day-detail-modal').style.display='none';
+});
 
 // REPORT
 function renderReport(){
@@ -774,11 +902,57 @@ function buildRepeatObj(){
 // MODAL open/close
 function buildPickers(){
   const ep=document.getElementById('epick'); ep.innerHTML='';
-  EMOJIS.forEach(e=>{
-    const b=document.createElement('div'); b.className='eo'+(e===selEmoji?' sel':''); b.textContent=e;
-    b.addEventListener('click',()=>{selEmoji=e;ep.querySelectorAll('.eo').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
-    ep.appendChild(b);
+
+  // カテゴリタブ
+  const tabRow = document.createElement('div');
+  tabRow.style.cssText='display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;';
+  let activeCat = 0;
+
+  function renderEmojiGrid(catIdx){
+    activeCat = catIdx;
+    // タブのアクティブ状態更新
+    tabRow.querySelectorAll('.ecat-btn').forEach((b,i)=>{
+      b.style.background = i===catIdx ? '#E8F5E9' : '#F5F5F5';
+      b.style.color = i===catIdx ? '#2E7D32' : '#9E9E9E';
+      b.style.borderColor = i===catIdx ? '#4CAF50' : '#E0E0E0';
+    });
+    // グリッド更新
+    grid.innerHTML='';
+    EMOJI_CATEGORIES[catIdx].emojis.forEach(e=>{
+      const b=document.createElement('div');
+      b.className='eo'+(e===selEmoji?' sel':'');
+      b.textContent=e;
+      b.addEventListener('click',()=>{
+        selEmoji=e;
+        grid.querySelectorAll('.eo').forEach(x=>x.classList.remove('sel'));
+        b.classList.add('sel');
+      });
+      grid.appendChild(b);
+    });
+  }
+
+  EMOJI_CATEGORIES.forEach((cat,i)=>{
+    const btn=document.createElement('button');
+    btn.className='ecat-btn';
+    btn.textContent=cat.label;
+    btn.style.cssText='padding:4px 10px;border-radius:99px;border:1.5px solid #E0E0E0;background:#F5F5F5;font-size:11px;cursor:pointer;font-family:"Noto Sans JP",sans-serif;white-space:nowrap;color:#9E9E9E;';
+    btn.addEventListener('click',()=>renderEmojiGrid(i));
+    tabRow.appendChild(btn);
   });
+  ep.appendChild(tabRow);
+
+  // 絵文字グリッド
+  const grid=document.createElement('div');
+  grid.className='epick';
+  grid.style.cssText='max-height:120px;overflow-y:auto;';
+  ep.appendChild(grid);
+
+  // 初期表示: selEmojiが属するカテゴリを探す
+  let initCat=0;
+  EMOJI_CATEGORIES.forEach((cat,i)=>{ if(cat.emojis.includes(selEmoji)) initCat=i; });
+  renderEmojiGrid(initCat);
+
+  // カラーピッカー
   const cp=document.getElementById('cpick'); cp.innerHTML='';
   COLORS.forEach(c=>{
     const b=document.createElement('div'); b.className='co'+(c===selColor?' sel':'');
