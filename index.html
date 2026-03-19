@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>マイルーティーン</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
+.app{max-width:390px;margin:0 auto;background:#F8F9FA;min-height:100vh;padding-bottom:90px;}
+.header{background:#fff;padding:18px 20px 0;border-bottom:1px solid #F0F0F0;position:sticky;top:0;z-index:20;}
+.header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.greeting{font-size:13px;color:#9E9E9E;margin-bottom:2px;}
+.today-str{font-size:20px;font-weight:700;color:#212121;}
+.streak-row{display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.streak-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;background:#FFF8E1;color:#F57F17;border:1px solid #FFE082;}
+.done-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 12px;border-radius:99px;background:#F1F8E9;color:#388E3C;border:1px solid #C5E1A5;}
+.tabs{display:flex;border-bottom:1.5px solid #F5F5F5;}
+.tab{flex:1;padding:10px 4px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:#9E9E9E;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:all .15s;}
+.tab.active{color:#4CAF50;border-bottom-color:#4CAF50;}
+.view{display:none;padding-top:4px;}.view.active{display:block;}
+.prog-strip{display:flex;align-items:center;gap:10px;padding:14px 20px 4px;}
+.prog-bar-wrap{flex:1;height:7px;background:#EEEEEE;border-radius:99px;overflow:hidden;}
+.prog-bar{height:100%;background:linear-gradient(90deg,#66BB6A,#43A047);border-radius:99px;transition:width .4s;}
+.prog-pct{font-size:12px;font-weight:700;color:#43A047;font-family:'DM Mono',monospace;min-width:32px;text-align:right;}
+.period-heading{display:flex;align-items:center;gap:8px;padding:14px 20px 4px;}
+.period-icon{font-size:16px;}
+.period-name{font-size:13px;font-weight:700;color:#616161;}
+.period-count{font-size:11px;padding:2px 8px;border-radius:99px;background:#F5F5F5;color:#9E9E9E;font-family:'DM Mono',monospace;}
+.period-done-lbl{font-size:12px;color:#4CAF50;font-weight:700;}
+.routine-row{padding:0 16px 7px;}
+.routine-card{background:#fff;border-radius:14px;border:1.5px solid #F0F0F0;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.routine-card.checked{border-color:#C8E6C9;background:#FAFFF9;}
+.routine-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07);}
+.routine-card.inactive{background:#FAFAFA;border-color:#F0F0F0;opacity:.55;cursor:default;}
+.routine-card.inactive:hover{box-shadow:none;}
+.emoji-box{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.r-info{flex:1;min-width:0;}
+.r-name{font-size:14px;font-weight:500;color:#212121;margin-bottom:3px;}
+.routine-card.checked .r-name{color:#9E9E9E;text-decoration:line-through;text-decoration-color:#C8E6C9;}
+.routine-card.inactive .r-name{color:#9E9E9E;}
+.r-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.r-time{font-size:11px;color:#BDBDBD;font-family:'DM Mono',monospace;}
+.r-dur{font-size:11px;padding:2px 7px;border-radius:99px;font-family:'DM Mono',monospace;font-weight:500;}
+.r-notif{font-size:11px;color:#BDBDBD;}
+.r-repeat{font-size:10px;padding:2px 7px;border-radius:99px;background:#E8F5E9;color:#2E7D32;font-weight:500;white-space:nowrap;}
+.r-repeat.muted{background:#F5F5F5;color:#9E9E9E;}
+.inactive-lbl{font-size:11px;color:#BDBDBD;}
+.check-btn{width:32px;height:32px;border-radius:50%;border:2px solid #E0E0E0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:all .2s;cursor:pointer;color:#fff;}
+.check-btn.done{border-color:#4CAF50;background:#4CAF50;}
+@keyframes stamp{0%{transform:scale(1.4) rotate(-8deg);}100%{transform:scale(1) rotate(0deg);}}
+.check-btn.pop{animation:stamp .22s ease-out;}
+/* inactive section */
+.inactive-section{margin:8px 16px 0;}
+.inactive-toggle-btn{display:flex;align-items:center;gap:6px;width:100%;padding:9px 12px;background:#F5F5F5;border-radius:10px;border:none;cursor:pointer;font-size:12px;color:#9E9E9E;font-family:'Noto Sans JP',sans-serif;text-align:left;}
+.inactive-toggle-btn .arrow{font-size:9px;transition:transform .15s;}
+.inactive-toggle-btn.open .arrow{transform:rotate(90deg);}
+.inactive-list-wrap{margin-top:4px;}
+/* Calendar */
+.cal-wrap{padding:0 16px 16px;}
+.cal-nav-row{display:flex;justify-content:space-between;align-items:center;padding:14px 4px 10px;}
+.cal-month-lbl{font-size:16px;font-weight:700;color:#212121;}
+.cal-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid #E0E0E0;background:#fff;cursor:pointer;font-size:16px;color:#616161;display:flex;align-items:center;justify-content:center;}
+.cal-days-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px;}
+.cal-day-lbl{text-align:center;font-size:11px;color:#9E9E9E;font-family:'DM Mono',monospace;padding:4px 0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:13px;font-family:'DM Mono',monospace;}
+.cal-num{line-height:1;}
+.cal-bar-small{width:18px;height:4px;border-radius:99px;}
+.c-full{background:#E8F5E9;}.c-full .cal-num{color:#388E3C;font-weight:700;}.c-full .cal-bar-small{background:#4CAF50;}
+.c-partial{background:#FFF8E1;}.c-partial .cal-num{color:#E65100;}.c-partial .cal-bar-small{background:#FFB300;}
+.c-miss{background:#F5F5F5;}.c-miss .cal-num{color:#BDBDBD;}.c-miss .cal-bar-small{background:#E0E0E0;}
+.c-today{background:#4CAF50;border-radius:50%;}.c-today .cal-num{color:#fff;font-weight:700;}
+.c-future .cal-num{color:#E0E0E0;}
+.cal-legend-row{display:flex;gap:12px;padding:10px 4px 0;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#9E9E9E;}
+.leg-sq{width:10px;height:10px;border-radius:3px;}
+/* Report */
+.rep-wrap{padding:0 16px 16px;}
+.rep-card{background:#fff;border-radius:16px;border:1px solid #F0F0F0;padding:16px;margin-top:10px;}
+.rep-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9E9E9E;margin-bottom:14px;font-family:'DM Mono',monospace;}
+.kpi-row{display:flex;}
+.kpi{flex:1;text-align:center;padding:8px 4px;}
+.kpi+.kpi{border-left:1px solid #F0F0F0;}
+.kpi-val{font-size:24px;font-weight:700;color:#212121;font-family:'DM Mono',monospace;}
+.kpi-lbl{font-size:11px;color:#9E9E9E;margin-top:3px;}
+.bar-row2{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.bar-day2{font-size:12px;color:#9E9E9E;font-family:'DM Mono',monospace;width:16px;text-align:center;}
+.bar-outer2{flex:1;height:10px;background:#F5F5F5;border-radius:99px;overflow:hidden;}
+.bar-in2{height:100%;border-radius:99px;transition:width .5s;}
+.bar-pct2{font-size:11px;color:#9E9E9E;font-family:'DM Mono',monospace;width:30px;text-align:right;}
+.rank-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #F5F5F5;}
+.rank-row:last-child{border:none;}
+.rank-num{font-size:12px;font-family:'DM Mono',monospace;color:#BDBDBD;width:16px;}
+.rank-emoji{font-size:18px;}
+.rank-name{flex:1;font-size:13px;font-weight:500;color:#212121;}
+.rank-pill{font-size:11px;padding:3px 9px;border-radius:99px;background:#E8F5E9;color:#388E3C;font-family:'DM Mono',monospace;font-weight:700;}
+/* FAB */
+.fab{position:fixed;bottom:24px;right:50%;transform:translateX(50%);background:#4CAF50;color:#fff;border:none;border-radius:99px;padding:15px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;display:flex;align-items:center;gap:8px;z-index:30;box-shadow:0 4px 20px rgba(76,175,80,.4);transition:transform .1s;}
+.fab:active{transform:translateX(50%) scale(.97);}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:40;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:#fff;border-radius:24px 24px 0 0;padding:14px 20px 44px;width:100%;max-width:390px;max-height:92vh;overflow-y:auto;}
+.modal-handle{width:40px;height:4px;border-radius:99px;background:#E0E0E0;margin:0 auto 18px;}
+.modal-ttl{font-size:17px;font-weight:700;color:#212121;margin-bottom:16px;}
+.fl{margin-bottom:13px;}
+.fl label{font-size:12px;font-weight:700;color:#9E9E9E;margin-bottom:6px;display:block;}
+.fl input,.fl select{width:100%;padding:11px 13px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;font-family:'Noto Sans JP',sans-serif;outline:none;transition:border-color .15s;}
+.fl input:focus,.fl select:focus{border-color:#A5D6A7;}
+.epick{display:flex;gap:6px;flex-wrap:wrap;}
+.eo{width:36px;height:36px;border-radius:10px;border:2px solid #F0F0F0;background:#FAFAFA;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;}
+.eo.sel{border-color:#4CAF50;background:#F1F8E9;}
+.cpick{display:flex;gap:8px;flex-wrap:wrap;}
+.co{width:28px;height:28px;border-radius:50%;cursor:pointer;}
+.co.sel{outline:3px solid #212121;outline-offset:2px;}
+.trow{display:flex;gap:8px;}.trow select{flex:1;}
+/* 繰り返し */
+.rt-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.rt-btn{padding:6px 13px;border-radius:99px;border:1.5px solid #EEEEEE;background:#FAFAFA;font-size:12px;font-weight:500;color:#9E9E9E;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;}
+.rt-btn.sel{border-color:#4CAF50;background:#E8F5E9;color:#2E7D32;}
+.repeat-sub{background:#F8F9FA;border-radius:12px;padding:12px;border:1.5px solid #EEEEEE;}
+.day-picker{display:flex;gap:5px;justify-content:space-between;}
+.dp-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid #E0E0E0;background:#fff;font-size:12px;font-weight:500;color:#9E9E9E;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans JP',sans-serif;}
+.dp-btn.sel{border-color:#4CAF50;background:#4CAF50;color:#fff;}
+.count-row{display:flex;align-items:center;gap:12px;}
+.cnt-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid #E0E0E0;background:#fff;font-size:18px;color:#616161;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:sans-serif;}
+.cnt-val{font-size:20px;font-weight:700;color:#212121;font-family:'DM Mono',monospace;min-width:28px;text-align:center;}
+.cnt-lbl{font-size:13px;color:#9E9E9E;}
+.interval-row{display:flex;align-items:center;gap:8px;}
+.interval-row input{width:64px;text-align:center;padding:9px 8px;}
+.monthly-row{display:flex;gap:8px;margin-bottom:8px;}
+.monthly-row select{flex:1;}
+.monthly-sub-row{display:flex;align-items:center;gap:8px;}
+.monthly-sub-row select{flex:1;padding:9px 10px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:10px;background:#fff;font-family:'Noto Sans JP',sans-serif;outline:none;}
+.sub-hint{font-size:11px;color:#9E9E9E;margin-top:8px;}
+/* 通知 */
+.tog-wrap{border:1.5px solid #EEEEEE;border-radius:12px;overflow:hidden;}
+.tog-row{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#FAFAFA;cursor:pointer;}
+.tog-track{width:40px;height:22px;border-radius:99px;background:#E0E0E0;position:relative;flex-shrink:0;transition:background .2s;}
+.tog-track.on{background:#4CAF50;}
+.tog-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.tog-track.on .tog-thumb{left:21px;}
+.tog-lbl{font-size:13px;color:#424242;}
+.ntrow{display:flex;align-items:center;gap:8px;padding:8px 13px;background:#FAFAFA;border-top:1px solid #EEEEEE;}
+.modal-save{width:100%;padding:15px;border-radius:14px;background:#4CAF50;color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;margin-top:6px;}
+.modal-save:active{opacity:.85;}
+
+/* === TODO === */
+.todo-section{padding:0 16px 4px;}
+.todo-header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 6px;}
+.todo-header-left{display:flex;align-items:center;gap:8px;}
+.todo-title{font-size:13px;font-weight:700;color:#616161;}
+.todo-count{font-size:11px;padding:2px 8px;border-radius:99px;background:#F5F5F5;color:#9E9E9E;font-family:'DM Mono',monospace;}
+.todo-add-btn{font-size:12px;padding:4px 12px;border-radius:99px;border:1.5px solid #E0E0E0;background:#fff;color:#9E9E9E;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;}
+.todo-add-btn:hover{border-color:#4CAF50;color:#4CAF50;}
+.todo-card{background:#fff;border-radius:14px;border:1.5px solid #F0F0F0;display:flex;align-items:center;gap:10px;padding:11px 14px;margin-bottom:6px;transition:border-color .15s;}
+.todo-card.done-todo{border-color:#C8E6C9;background:#FAFFF9;}
+.todo-check{width:26px;height:26px;border-radius:8px;border:1.5px solid #E0E0E0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;cursor:pointer;transition:all .2s;color:#fff;}
+.todo-check.done{border-color:#4CAF50;background:#4CAF50;}
+.todo-text{flex:1;font-size:14px;color:#212121;font-weight:400;}
+.todo-card.done-todo .todo-text{color:#9E9E9E;text-decoration:line-through;text-decoration-color:#C8E6C9;}
+.todo-del{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:#BDBDBD;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.todo-del:hover{background:#FFF3F3;color:#E57373;}
+.todo-input-row{display:flex;gap:8px;margin-bottom:8px;}
+.todo-input-row input{flex:1;padding:10px 12px;font-size:14px;border:1.5px solid #A5D6A7;border-radius:12px;background:#fff;color:#212121;font-family:'Noto Sans JP',sans-serif;outline:none;}
+.todo-input-row button{padding:10px 16px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;}
+/* === MODE === */
+.mode-bar{display:flex;align-items:center;gap:8px;padding:10px 16px 2px;overflow-x:auto;}
+.mode-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:99px;border:1.5px solid #E0E0E0;background:#fff;font-size:12px;font-weight:500;color:#9E9E9E;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;flex-shrink:0;transition:all .15s;}
+.mode-chip.active-mode{border-color:#4CAF50;background:#E8F5E9;color:#2E7D32;}
+.mode-chip .mode-dot{width:7px;height:7px;border-radius:50%;background:#E0E0E0;}
+.mode-chip.active-mode .mode-dot{background:#4CAF50;}
+.mode-edit-btn{font-size:11px;color:#9E9E9E;border:none;background:transparent;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;flex-shrink:0;padding:4px 8px;}
+/* mode modal */
+.mode-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:40;display:flex;align-items:flex-end;justify-content:center;}
+.mode-modal{background:#fff;border-radius:24px 24px 0 0;padding:14px 20px 44px;width:100%;max-width:390px;max-height:85vh;overflow-y:auto;}
+.mode-list-item{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #F5F5F5;}
+.mode-list-item:last-child{border:none;}
+.mode-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.mode-item-name{flex:1;font-size:14px;font-weight:500;color:#212121;}
+.mode-item-count{font-size:12px;color:#9E9E9E;font-family:'DM Mono',monospace;}
+.mode-del-btn{width:26px;height:26px;border-radius:6px;border:none;background:transparent;color:#BDBDBD;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.mode-del-btn:hover{background:#FFF3F3;color:#E57373;}
+.mode-add-row{display:flex;gap:8px;margin-top:12px;}
+.mode-add-row input{flex:1;padding:10px 12px;font-size:14px;border:1.5px solid #EEEEEE;border-radius:12px;background:#FAFAFA;color:#212121;font-family:'Noto Sans JP',sans-serif;outline:none;}
+.mode-add-row input:focus{border-color:#A5D6A7;}
+.mode-add-row button{padding:10px 16px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.mode-routine-picker{margin-top:14px;}
+.mode-routine-picker-title{font-size:12px;font-weight:700;color:#9E9E9E;margin-bottom:8px;}
+.mrp-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid #F5F5F5;cursor:pointer;}
+.mrp-item:last-child{border:none;}
+.mrp-chk{width:22px;height:22px;border-radius:6px;border:1.5px solid #E0E0E0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;transition:all .15s;}
+.mrp-chk.on{background:#4CAF50;border-color:#4CAF50;}
+.mrp-emoji{font-size:16px;}
+.mrp-name{font-size:13px;color:#212121;}
+
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+  <div class="header-row">
+    <div>
+      <div class="greeting">こんにちは 👋</div>
+      <div class="today-str" id="today-str"></div>
+    </div>
+    <svg width="54" height="54" viewBox="0 0 54 54">
+      <circle cx="27" cy="27" r="21" fill="none" stroke="#F0F0F0" stroke-width="4"/>
+      <circle id="ring-c" cx="27" cy="27" r="21" fill="none" stroke="#4CAF50" stroke-width="4"
+        stroke-dasharray="131.9" stroke-dashoffset="131.9" stroke-linecap="round"
+        transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .4s cubic-bezier(.4,0,.2,1)"/>
+      <text x="27" y="31" text-anchor="middle" font-size="11" font-weight="700" fill="#212121" font-family="DM Mono,monospace" id="ring-txt">0%</text>
+    </svg>
+  </div>
+  <div id="notif-banner" style="margin:0 0 10px;padding:9px 14px;background:#F1F8E9;border:1px solid #C5E1A5;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <span style="font-size:12px;color:#2E7D32;">🔔 通知を有効にするとリマインダーが届きます</span>
+    <button onclick="handleNotifRequest()" style="padding:5px 12px;border-radius:99px;background:#4CAF50;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;">許可する</button>
+  </div>
+  <div class="streak-row">
+    <div class="streak-chip">🔥 <span id="streak-n">7</span>日連続</div>
+    <div class="done-chip">✅ <span id="done-chip">0 / 0 完了</span></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="today">今日</div>
+    <div class="tab" data-tab="calendar">カレンダー</div>
+    <div class="tab" data-tab="report">レポート</div>
+  </div>
+</div>
+
+<div class="view active" id="view-today">
+  <div class="prog-strip">
+    <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+    <div class="prog-pct" id="prog-pct">0%</div>
+  </div>
+
+  <!-- mode bar -->
+  <div class="mode-bar" id="mode-bar"></div>
+
+  <!-- todo section -->
+  <div class="todo-section" id="todo-section">
+    <div class="todo-header">
+      <div class="todo-header-left">
+        <span class="todo-title">📋 今日のTodo</span>
+        <span class="todo-count" id="todo-count">0 / 0</span>
+      </div>
+      <button class="todo-add-btn" id="todo-add-open">＋ 追加</button>
+    </div>
+    <div id="todo-input-wrap" style="display:none;padding:0 4px 4px;">
+      <div class="todo-input-row">
+        <input id="todo-inp" placeholder="今日やること…" />
+        <button id="todo-inp-save">追加</button>
+      </div>
+    </div>
+    <div id="todo-list"></div>
+  </div>
+
+  <div id="timeline"></div>
+  <div id="inactive-section" style="padding:4px 16px 12px;display:none;">
+    <button class="inactive-toggle-btn" id="inactive-toggle-btn">
+      <span class="arrow">▶</span>
+      <span id="inactive-lbl">今日対象外のルーティーン（0件）</span>
+    </button>
+    <div id="inactive-list" style="display:none;margin-top:4px;"></div>
+  </div>
+</div>
+
+<div class="view" id="view-calendar">
+  <div class="cal-wrap">
+    <div class="cal-nav-row">
+      <button class="cal-nav-btn" id="cal-p">‹</button>
+      <div class="cal-month-lbl" id="cal-lbl"></div>
+      <button class="cal-nav-btn" id="cal-n">›</button>
+    </div>
+    <div class="cal-days-row" id="cal-dlbls"></div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend-row">
+      <div class="leg"><div class="leg-sq" style="background:#4CAF50"></div>全完了</div>
+      <div class="leg"><div class="leg-sq" style="background:#FFB300"></div>一部完了</div>
+      <div class="leg"><div class="leg-sq" style="background:#E0E0E0"></div>未達成</div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-report">
+  <div class="rep-wrap">
+    <div class="rep-card">
+      <div class="rep-title">月間サマリー</div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-val">18</div><div class="kpi-lbl">達成日数</div></div>
+        <div class="kpi"><div class="kpi-val">7</div><div class="kpi-lbl">最長連続</div></div>
+        <div class="kpi"><div class="kpi-val">82%</div><div class="kpi-lbl">平均達成率</div></div>
+      </div>
+    </div>
+    <div class="rep-card">
+      <div class="rep-title">今週の達成率</div>
+      <div id="week-bars"></div>
+    </div>
+    <div class="rep-card">
+      <div class="rep-title">継続ランキング</div>
+      <div id="rank-list"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<button class="fab" id="fab-btn">＋ ルーティーンを追加</button>
+
+<div class="modal-bg" id="modal" style="display:none">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">新しいルーティーン</div>
+    <div class="fl"><label>名前</label><input id="m-name" placeholder="例：筋トレ"/></div>
+    <div class="fl"><label>アイコン（絵文字）</label><div class="epick" id="epick"></div></div>
+    <div class="fl"><label>カラー</label><div class="cpick" id="cpick"></div></div>
+    <div class="fl"><label>時間帯 / 時刻</label>
+      <div class="trow">
+        <select id="m-period"><option value="morning">🌅 朝</option><option value="afternoon">☀️ 昼</option><option value="evening">🌙 夜</option></select>
+        <select id="m-time">
+          <option>06:00</option><option>06:30</option><option>07:00</option><option>07:30</option>
+          <option>08:00</option><option>08:30</option><option>09:00</option><option>12:00</option>
+          <option>12:30</option><option>13:00</option><option>18:00</option><option>19:00</option>
+          <option>20:00</option><option>21:00</option><option>22:00</option><option>23:00</option>
+        </select>
+      </div>
+    </div>
+    <div class="fl"><label>目標時間（分）</label><input id="m-dur" type="number" min="1" max="180" placeholder="例：30"/></div>
+
+    <div class="fl">
+      <label>繰り返し</label>
+      <div class="rt-row" id="rt-row">
+        <button class="rt-btn sel" data-rt="everyday">毎日</button>
+        <button class="rt-btn" data-rt="weekdays">曜日指定</button>
+        <button class="rt-btn" data-rt="weekly_n">週N回</button>
+        <button class="rt-btn" data-rt="interval">N日ごと</button>
+        <button class="rt-btn" data-rt="monthly">月次</button>
+      </div>
+      <!-- 曜日指定 -->
+      <div id="sub-weekdays" class="repeat-sub" style="display:none">
+        <div class="day-picker" id="day-picker">
+          <button class="dp-btn" data-d="0">日</button>
+          <button class="dp-btn sel" data-d="1">月</button>
+          <button class="dp-btn" data-d="2">火</button>
+          <button class="dp-btn sel" data-d="3">水</button>
+          <button class="dp-btn" data-d="4">木</button>
+          <button class="dp-btn sel" data-d="5">金</button>
+          <button class="dp-btn" data-d="6">土</button>
+        </div>
+      </div>
+      <!-- 週N回 -->
+      <div id="sub-weekly_n" class="repeat-sub" style="display:none">
+        <div class="count-row">
+          <button class="cnt-btn" id="wn-m">−</button>
+          <div class="cnt-val" id="wn-v">3</div>
+          <button class="cnt-btn" id="wn-p">＋</button>
+          <span class="cnt-lbl">回 / 週</span>
+        </div>
+        <div class="sub-hint">週の目標回数。達成後はスキップ表示になります。</div>
+      </div>
+      <!-- N日ごと -->
+      <div id="sub-interval" class="repeat-sub" style="display:none">
+        <div class="interval-row">
+          <span style="font-size:13px;color:#616161;">毎</span>
+          <input id="interval-v" type="number" min="2" max="30" value="2"/>
+          <span style="font-size:13px;color:#616161;">日ごとに実施</span>
+        </div>
+        <div class="sub-hint">次回：<span id="interval-next">—</span></div>
+      </div>
+      <!-- 月次 -->
+      <div id="sub-monthly" class="repeat-sub" style="display:none">
+        <div class="monthly-row">
+          <select id="monthly-type">
+            <option value="date">毎月 指定日</option>
+            <option value="weekday">毎月 第N曜日</option>
+          </select>
+        </div>
+        <div id="msub-date" class="monthly-sub-row" style="margin-top:8px;">
+          <span style="font-size:13px;color:#616161;white-space:nowrap;">毎月</span>
+          <select id="monthly-date-v"></select>
+          <span style="font-size:13px;color:#616161;">日</span>
+        </div>
+        <div id="msub-wd" class="monthly-sub-row" style="margin-top:8px;display:none;">
+          <span style="font-size:13px;color:#616161;white-space:nowrap;">毎月</span>
+          <select id="monthly-nth">
+            <option value="1">第1</option><option value="2">第2</option><option value="3">第3</option><option value="4">第4</option>
+          </select>
+          <select id="monthly-wd">
+            <option value="0">日曜</option><option value="1">月曜</option><option value="2">火曜</option>
+            <option value="3">水曜</option><option value="4">木曜</option><option value="5">金曜</option><option value="6">土曜</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="fl"><label>リマインダー</label>
+      <div class="tog-wrap">
+        <div class="tog-row" id="tog-row">
+          <div class="tog-track" id="tog-trk"><div class="tog-thumb"></div></div>
+          <span class="tog-lbl" id="tog-lbl">通知オフ</span>
+        </div>
+        <div class="ntrow" id="ntrow" style="display:none">
+          <span style="font-size:12px;color:#9E9E9E;white-space:nowrap;">通知時刻</span>
+          <select id="m-ntime" style="flex:1;padding:6px 10px;font-size:13px;border:1px solid #EEEEEE;border-radius:8px;background:#fff;font-family:'Noto Sans JP',sans-serif;">
+            <option>05:55</option><option>06:00</option><option>06:30</option><option>07:00</option>
+            <option>07:30</option><option>08:00</option><option>11:55</option><option>12:00</option>
+            <option>17:55</option><option>18:00</option><option>20:55</option><option>21:00</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <button class="modal-save" id="modal-save">保存する 💚</button>
+  </div>
+</div>
+
+<script>
+const EMOJIS=['💧','🏃','🧘','📚','✍️','🍎','🛌','🎯','💪','🧠','🎵','🌿','☕','🥗','🚴','🤸','🪥','🧴'];
+const COLORS=[
+  {bg:'#E8F5E9',accent:'#4CAF50',text:'#2E7D32'},
+  {bg:'#E3F2FD',accent:'#2196F3',text:'#1565C0'},
+  {bg:'#FFF8E1',accent:'#FFC107',text:'#E65100'},
+  {bg:'#FCE4EC',accent:'#E91E63',text:'#880E4F'},
+  {bg:'#F3E5F5',accent:'#9C27B0',text:'#4A148C'},
+  {bg:'#E0F2F1',accent:'#009688',text:'#004D40'},
+  {bg:'#FBE9E7',accent:'#FF5722',text:'#BF360C'},
+  {bg:'#E8EAF6',accent:'#3F51B5',text:'#1A237E'},
+];
+const DAYS=['日','月','火','水','木','金','土'];
+const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const today=new Date();
+
+// ---- 繰り返し判定 ----
+function isActiveToday(r){
+  const rep=r.repeat;
+  if(!rep||rep.type==='everyday') return true;
+  const dow=today.getDay();
+  if(rep.type==='weekdays') return rep.days.includes(dow);
+  if(rep.type==='weekly_n') return (rep.doneThisWeek||0)<rep.n;
+  if(rep.type==='interval'){
+    const start=new Date(rep.startDate);
+    start.setHours(0,0,0,0);
+    const t=new Date(today); t.setHours(0,0,0,0);
+    const diff=Math.round((t-start)/(1000*60*60*24));
+    return diff>=0 && diff%rep.n===0;
+  }
+  if(rep.type==='monthly'){
+    if(rep.mtype==='date') return today.getDate()===rep.date;
+    if(rep.mtype==='weekday'){
+      if(today.getDay()!==rep.wd) return false;
+      return Math.ceil(today.getDate()/7)===rep.nth;
+    }
+  }
+  return true;
+}
+
+function repeatLabel(r){
+  const rep=r.repeat;
+  if(!rep||rep.type==='everyday') return '毎日';
+  if(rep.type==='weekdays'){
+    if(rep.days.length===5&&![0,6].some(d=>rep.days.includes(d))) return '平日';
+    if(rep.days.length===2&&rep.days.includes(0)&&rep.days.includes(6)) return '週末';
+    return rep.days.map(d=>DAYS[d]).join('・');
+  }
+  if(rep.type==='weekly_n') return `週${rep.n}回`;
+  if(rep.type==='interval') return `${rep.n}日ごと`;
+  if(rep.type==='monthly'){
+    if(rep.mtype==='date') return `毎月${rep.date}日`;
+    const nths=['','第1','第2','第3','第4'];
+    return `毎月${nths[rep.nth]}${DAYS[rep.wd]}曜`;
+  }
+  return '';
+}
+
+
+// ============ LOCALSTORAGE PERSISTENCE ============
+const LS_ROUTINES  = 'mr_routines_v1';
+const LS_TODOS     = 'mr_todos_v1';
+const LS_MODES     = 'mr_modes_v1';
+const LS_ACTIVE_M  = 'mr_active_mode_v1';
+const LS_DONE_DATE = 'mr_done_date_v1';  // チェック状態は当日のみ保持
+const LS_NEXT_IDS  = 'mr_next_ids_v1';
+
+const todayKey = new Date().toISOString().split('T')[0];
+
+function saveAll(){
+  try{
+    localStorage.setItem(LS_ROUTINES,  JSON.stringify(routines));
+    localStorage.setItem(LS_TODOS,     JSON.stringify(todos));
+    localStorage.setItem(LS_MODES,     JSON.stringify(modes));
+    localStorage.setItem(LS_ACTIVE_M,  String(activeModeId));
+    localStorage.setItem(LS_DONE_DATE, todayKey);
+    localStorage.setItem(LS_NEXT_IDS,  JSON.stringify({r:nextId, t:nextTodoId, m:nextModeId}));
+  }catch(e){ console.warn('localStorage save error', e); }
+}
+
+function loadAll(){
+  try{
+    // ルーティーン
+    const rv = localStorage.getItem(LS_ROUTINES);
+    if(rv){
+      const loaded = JSON.parse(rv);
+      // done フラグは日付が変わったらリセット
+      const savedDate = localStorage.getItem(LS_DONE_DATE);
+      loaded.forEach(r => {
+        if(savedDate !== todayKey) r.done = false;
+        // color を COLORS 参照に戻す（JSONはオブジェクトそのまま保存されている）
+      });
+      routines = loaded;
+    }
+    // Todo（当日分のみ復元。日付変わったら空に）
+    const tv = localStorage.getItem(LS_TODOS);
+    const savedDate2 = localStorage.getItem(LS_DONE_DATE);
+    if(tv && savedDate2 === todayKey) todos = JSON.parse(tv);
+    else todos = [];
+    // モード
+    const mv = localStorage.getItem(LS_MODES);
+    if(mv) modes = JSON.parse(mv);
+    // アクティブモード
+    const am = localStorage.getItem(LS_ACTIVE_M);
+    if(am) activeModeId = parseInt(am);
+    // ID カウンタ
+    const ids = localStorage.getItem(LS_NEXT_IDS);
+    if(ids){ const o=JSON.parse(ids); nextId=o.r; nextTodoId=o.t; nextModeId=o.m; }
+  }catch(e){ console.warn('localStorage load error', e); }
+}
+// ============ END PERSISTENCE ============
+
+let routines=[];
+let nextId=1,selEmoji=EMOJIS[0],selColor=COLORS[0],notifOn=false;
+let selRT='everyday', selDays=[1,3,5], selWN=3, selInterval=2;
+let calY=today.getFullYear(), calM=today.getMonth();
+let inactiveOpen=false;
+
+document.getElementById('today-str').textContent=`${MN[today.getMonth()]}${today.getDate()}日（${DAYS[today.getDay()]}）`;
+
+// monthly date select
+const mdv=document.getElementById('monthly-date-v');
+for(let d=1;d<=31;d++){const o=document.createElement('option');o.value=d;o.textContent=d+'日';mdv.appendChild(o);}
+
+// TABS
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.tab).classList.add('active');
+    if(t.dataset.tab==='calendar') drawCal();
+    if(t.dataset.tab==='report') renderReport();
+  });
+});
+
+// STATS
+function updateStats(){
+  const active=routines.filter(r=>isActiveInMode(r));
+  const total=active.length, done=active.filter(r=>r.done).length;
+  const pct=total?Math.round(done/total*100):0;
+  const c=131.9, off=c-(pct/100)*c;
+  document.getElementById('ring-c').style.strokeDashoffset=off;
+  document.getElementById('ring-txt').textContent=pct+'%';
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('done-chip').textContent=done+' / '+total+' 完了';
+}
+
+// TODAY
+function renderToday(){
+  const tl=document.getElementById('timeline'); tl.innerHTML='';
+  [{key:'morning',label:'朝',icon:'🌅'},{key:'afternoon',label:'昼',icon:'☀️'},{key:'evening',label:'夜',icon:'🌙'}].forEach(p=>{
+    const items=routines.filter(r=>r.period===p.key&&isActiveInMode(r));
+    if(!items.length) return;
+    const ph=document.createElement('div'); ph.className='period-heading';
+    const allDone=items.every(r=>r.done);
+    ph.innerHTML=`<span class="period-icon">${p.icon}</span>
+      <span class="period-name">${p.label}のルーティーン</span>
+      <span class="period-count">${items.filter(r=>r.done).length}/${items.length}</span>
+      ${allDone?'<span class="period-done-lbl">完了！🎉</span>':''}`;
+    tl.appendChild(ph);
+    items.forEach(r=>{
+      const row=document.createElement('div'); row.className='routine-row';
+      const card=makeCard(r);
+      row.appendChild(card); tl.appendChild(row);
+    });
+  });
+  // 今日対象外
+  const inactive=routines.filter(r=>!isActiveInMode(r));
+  const sec=document.getElementById('inactive-section');
+  const list=document.getElementById('inactive-list');
+  if(inactive.length){
+    sec.style.display='block';
+    document.getElementById('inactive-lbl').textContent=`今日対象外のルーティーン（${inactive.length}件）`;
+    list.innerHTML='';
+    inactive.forEach(r=>{
+      const row=document.createElement('div'); row.style.cssText='padding:0 0 6px;';
+      const card=document.createElement('div'); card.className='routine-card inactive';
+      const lbl=repeatLabel(r);
+      card.innerHTML=`
+        <div class="emoji-box" style="background:${r.color.bg}">${r.emoji}</div>
+        <div class="r-info">
+          <div class="r-name">${r.name}</div>
+          <div class="r-meta">
+            <span class="r-repeat muted">${lbl}</span>
+            <span class="inactive-lbl">今日はお休み</span>
+          </div>
+        </div>`;
+      row.appendChild(card); list.appendChild(row);
+    });
+  } else {
+    sec.style.display='none';
+  }
+  updateStats();
+  saveAll();
+}
+
+function makeCard(r){
+  const card=document.createElement('div'); card.className='routine-card'+(r.done?' checked':'');
+  const showRep=r.repeat&&r.repeat.type!=='everyday';
+  card.innerHTML=`
+    <div class="emoji-box" style="background:${r.color.bg}">${r.emoji}</div>
+    <div class="r-info">
+      <div class="r-name">${r.name}</div>
+      <div class="r-meta">
+        <span class="r-time">${r.time}</span>
+        ${r.duration?`<span class="r-dur" style="background:${r.color.bg};color:${r.color.text}">${r.duration}分</span>`:''}
+        ${showRep?`<span class="r-repeat">${repeatLabel(r)}</span>`:''}
+        ${r.notif?`<span class="r-notif">🔔${r.ntime||r.time}</span>`:''}
+      </div>
+    </div>
+    <div class="check-btn${r.done?' done':''}">${r.done?'✓':''}</div>`;
+  card.querySelector('.check-btn').addEventListener('click',e=>{
+    e.stopPropagation(); r.done=!r.done;
+    if(r.done&&r.repeat&&r.repeat.type==='weekly_n') r.repeat.doneThisWeek=(r.repeat.doneThisWeek||0)+1;
+    const btn=e.currentTarget; btn.classList.add('pop');
+    setTimeout(()=>btn.classList.remove('pop'),250);
+    renderToday(); updateStats();
+  });
+  return card;
+}
+
+// inactive toggle
+document.getElementById('inactive-toggle-btn').addEventListener('click',()=>{
+  inactiveOpen=!inactiveOpen;
+  document.getElementById('inactive-list').style.display=inactiveOpen?'block':'none';
+  document.getElementById('inactive-toggle-btn').classList.toggle('open',inactiveOpen);
+});
+
+// CALENDAR
+function calData(y,m,d){
+  const isCur=(today.getFullYear()===y&&today.getMonth()===m);
+  if(isCur&&d===today.getDate()){
+    const active=routines.filter(r=>isActiveToday(r));
+    return{pct:active.length?Math.round(active.filter(r=>r.done).length/active.length*100):0,today:true};
+  }
+  if(isCur&&d>today.getDate()) return null;
+  const fake=[100,100,75,100,0,100,50,100,100,100,80,100,100,100,50,100,100,100,100,83,66,100,0,100,100,50,100,100,100,100,100];
+  return{pct:fake[(d-1)%fake.length]||0};
+}
+function drawCal(){
+  document.getElementById('cal-lbl').textContent=`${calY}年${MN[calM]}`;
+  document.getElementById('cal-dlbls').innerHTML=DAYS.map(d=>`<div class="cal-day-lbl">${d}</div>`).join('');
+  const grid=document.getElementById('cal-grid'); grid.innerHTML='';
+  const fd=new Date(calY,calM,1).getDay(), dim=new Date(calY,calM+1,0).getDate();
+  for(let i=0;i<fd;i++){const c=document.createElement('div');c.className='cal-cell';grid.appendChild(c);}
+  for(let d=1;d<=dim;d++){
+    const data=calData(calY,calM,d);
+    const c=document.createElement('div'); c.className='cal-cell';
+    if(data&&data.today) c.classList.add('c-today');
+    else if(!data) c.classList.add('c-future');
+    else if(data.pct===100) c.classList.add('c-full');
+    else if(data.pct>0) c.classList.add('c-partial');
+    else c.classList.add('c-miss');
+    c.innerHTML=`<div class="cal-num">${d}</div>${data&&!data.today?`<div class="cal-bar-small"></div>`:''}`;
+    grid.appendChild(c);
+  }
+}
+document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();});
+document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
+
+// REPORT
+function renderReport(){
+  const wb=document.getElementById('week-bars'); wb.innerHTML='';
+  const active=routines.filter(r=>isActiveToday(r));
+  const todayPct=active.length?Math.round(active.filter(r=>r.done).length/active.length*100):0;
+  [{d:'月',p:100},{d:'火',p:100},{d:'水',p:75},{d:'木',p:100},{d:'金',p:0},{d:'土',p:100},{d:'今日',p:todayPct}].forEach(w=>{
+    const row=document.createElement('div'); row.className='bar-row2';
+    const col=w.p===0?'#E0E0E0':w.p===100?'#4CAF50':'#FFB300';
+    row.innerHTML=`<span class="bar-day2" style="width:24px">${w.d}</span>
+      <div class="bar-outer2"><div class="bar-in2" style="width:${w.p}%;background:${col}"></div></div>
+      <span class="bar-pct2">${w.p}%</span>`;
+    wb.appendChild(row);
+  });
+  const rl=document.getElementById('rank-list'); rl.innerHTML='';
+  const rates=[92,88,85,77,70,65,60,55,50];
+  routines.forEach((r,i)=>{
+    const row=document.createElement('div'); row.className='rank-row';
+    row.innerHTML=`<span class="rank-num">${i+1}</span>
+      <span class="rank-emoji">${r.emoji}</span>
+      <span class="rank-name">${r.name}</span>
+      <span style="font-size:10px;color:#BDBDBD;margin-right:2px;">${repeatLabel(r)}</span>
+      <span class="rank-pill">${rates[i]||50}%</span>`;
+    rl.appendChild(row);
+  });
+}
+
+// MODAL: 繰り返し
+function showSub(type){
+  ['weekdays','weekly_n','interval','monthly'].forEach(t=>{
+    const el=document.getElementById('sub-'+t); if(el) el.style.display=(t===type?'block':'none');
+  });
+  if(type==='interval') updateIntervalHint();
+  if(type==='monthly') updateMonthlySub();
+}
+function updateIntervalHint(){
+  const n=parseInt(document.getElementById('interval-v').value)||2;
+  const nxt=new Date(); nxt.setDate(nxt.getDate()+n);
+  document.getElementById('interval-next').textContent=`${MN[nxt.getMonth()]}${nxt.getDate()}日`;
+}
+function updateMonthlySub(){
+  const mt=document.getElementById('monthly-type').value;
+  document.getElementById('msub-date').style.display=mt==='date'?'flex':'none';
+  document.getElementById('msub-wd').style.display=mt==='weekday'?'flex':'none';
+}
+document.getElementById('monthly-type').addEventListener('change',updateMonthlySub);
+document.getElementById('interval-v').addEventListener('input',updateIntervalHint);
+document.getElementById('rt-row').addEventListener('click',e=>{
+  const btn=e.target.closest('.rt-btn'); if(!btn) return;
+  selRT=btn.dataset.rt;
+  document.querySelectorAll('.rt-btn').forEach(b=>b.classList.toggle('sel',b.dataset.rt===selRT));
+  showSub(selRT);
+});
+document.getElementById('day-picker').addEventListener('click',e=>{
+  const btn=e.target.closest('.dp-btn'); if(!btn) return;
+  const d=parseInt(btn.dataset.d);
+  if(selDays.includes(d)) selDays=selDays.filter(x=>x!==d);
+  else selDays.push(d);
+  document.querySelectorAll('.dp-btn').forEach(b=>b.classList.toggle('sel',selDays.includes(parseInt(b.dataset.d))));
+});
+let wn=3;
+document.getElementById('wn-m').addEventListener('click',()=>{wn=Math.max(1,wn-1);document.getElementById('wn-v').textContent=wn;selWN=wn;});
+document.getElementById('wn-p').addEventListener('click',()=>{wn=Math.min(7,wn+1);document.getElementById('wn-v').textContent=wn;selWN=wn;});
+
+function buildRepeatObj(){
+  if(selRT==='everyday') return{type:'everyday'};
+  if(selRT==='weekdays') return{type:'weekdays',days:[...selDays]};
+  if(selRT==='weekly_n') return{type:'weekly_n',n:selWN,doneThisWeek:0};
+  if(selRT==='interval') return{type:'interval',n:parseInt(document.getElementById('interval-v').value)||2,startDate:today.toISOString().split('T')[0]};
+  if(selRT==='monthly'){
+    const mt=document.getElementById('monthly-type').value;
+    if(mt==='date') return{type:'monthly',mtype:'date',date:parseInt(document.getElementById('monthly-date-v').value)};
+    return{type:'monthly',mtype:'weekday',nth:parseInt(document.getElementById('monthly-nth').value),wd:parseInt(document.getElementById('monthly-wd').value)};
+  }
+  return{type:'everyday'};
+}
+
+// MODAL open/close
+function buildPickers(){
+  const ep=document.getElementById('epick'); ep.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const b=document.createElement('div'); b.className='eo'+(e===selEmoji?' sel':''); b.textContent=e;
+    b.addEventListener('click',()=>{selEmoji=e;ep.querySelectorAll('.eo').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
+    ep.appendChild(b);
+  });
+  const cp=document.getElementById('cpick'); cp.innerHTML='';
+  COLORS.forEach(c=>{
+    const b=document.createElement('div'); b.className='co'+(c===selColor?' sel':'');
+    b.style.background=c.accent;
+    b.addEventListener('click',()=>{selColor=c;cp.querySelectorAll('.co').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');});
+    cp.appendChild(b);
+  });
+}
+document.getElementById('tog-row').addEventListener('click',()=>{
+  notifOn=!notifOn;
+  document.getElementById('tog-trk').className='tog-track'+(notifOn?' on':'');
+  document.getElementById('tog-lbl').textContent=notifOn?'通知オン':'通知オフ';
+  document.getElementById('ntrow').style.display=notifOn?'flex':'none';
+});
+document.getElementById('fab-btn').addEventListener('click',()=>{
+  notifOn=false; selRT='everyday'; selDays=[1,3,5]; wn=3;
+  document.getElementById('tog-trk').className='tog-track';
+  document.getElementById('tog-lbl').textContent='通知オフ';
+  document.getElementById('ntrow').style.display='none';
+  document.getElementById('m-name').value='';
+  document.getElementById('m-dur').value='';
+  document.querySelectorAll('.rt-btn').forEach(b=>b.classList.toggle('sel',b.dataset.rt==='everyday'));
+  showSub('everyday');
+  buildPickers();
+  document.getElementById('modal').style.display='flex';
+});
+document.getElementById('modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('modal')) document.getElementById('modal').style.display='none';
+});
+document.getElementById('modal-save').addEventListener('click',()=>{
+  const name=document.getElementById('m-name').value.trim();
+  if(!name){document.getElementById('m-name').focus();return;}
+  routines.push({id:nextId++,name,emoji:selEmoji,color:selColor,
+    period:document.getElementById('m-period').value,
+    time:document.getElementById('m-time').value,
+    duration:parseInt(document.getElementById('m-dur').value)||0,
+    done:false,notif:notifOn,ntime:document.getElementById('m-ntime').value,
+    repeat:buildRepeatObj()});
+  document.getElementById('modal').style.display='none';
+  renderToday();
+});
+
+
+// ======= TODO =======
+let todos = [];
+let nextTodoId = 1;
+
+function renderTodos(){
+  const list = document.getElementById('todo-list');
+  const done = todos.filter(t=>t.done).length;
+  document.getElementById('todo-count').textContent = done+' / '+todos.length;
+  list.innerHTML = '';
+  todos.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'todo-card'+(t.done?' done-todo':'');
+    card.innerHTML = `
+      <div class="todo-check${t.done?' done':''}" data-tid="${t.id}">${t.done?'✓':''}</div>
+      <div class="todo-text">${t.text}</div>
+      <button class="todo-del" data-tid="${t.id}">✕</button>
+    `;
+    card.querySelector('.todo-check').addEventListener('click', e => {
+      t.done = !t.done; saveAll(); renderTodos();
+    });
+    card.querySelector('.todo-del').addEventListener('click', e => {
+      todos = todos.filter(x=>x.id!==t.id); saveAll(); renderTodos();
+    });
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('todo-add-open').addEventListener('click', () => {
+  const wrap = document.getElementById('todo-input-wrap');
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) setTimeout(()=>document.getElementById('todo-inp').focus(), 50);
+});
+
+function saveTodo(){
+  const inp = document.getElementById('todo-inp');
+  const text = inp.value.trim();
+  if(!text) return;
+  todos.push({id:nextTodoId++, text, done:false});
+  inp.value = '';
+  document.getElementById('todo-input-wrap').style.display = 'none';
+  saveAll();
+  renderTodos();
+}
+document.getElementById('todo-inp-save').addEventListener('click', saveTodo);
+document.getElementById('todo-inp').addEventListener('keydown', e => { if(e.key==='Enter') saveTodo(); });
+
+// ======= ROUTINE MODE =======
+const MODE_COLORS = ['#4CAF50','#2196F3','#FF9800','#9C27B0','#F44336','#009688'];
+let modes = [
+  {id:1, name:'通常', color:'#4CAF50', routineIds: null}, // null = 全部
+  {id:2, name:'平日', color:'#2196F3', routineIds: [1,2,3,4,5,6,7]},
+  {id:3, name:'週末', color:'#FF9800', routineIds: [1,2,6,7]},
+  {id:4, name:'体調不良', color:'#9C27B0', routineIds: [1,6]},
+];
+let nextModeId = 5;
+let activeModeId = 1;
+let editingModeId = null;
+
+function isActiveInMode(r){
+  const m = modes.find(x=>x.id===activeModeId);
+  if(!m || m.routineIds===null) return isActiveToday(r);
+  return m.routineIds.includes(r.id) && isActiveToday(r);
+}
+
+function renderModeBar(){
+  const bar = document.getElementById('mode-bar');
+  bar.innerHTML = '';
+  modes.forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'mode-chip'+(m.id===activeModeId?' active-mode':'');
+    chip.innerHTML = `<span class="mode-dot"></span>${m.name}`;
+    chip.addEventListener('click', () => {
+      activeModeId = m.id;
+      renderModeBar();
+      renderToday();
+    });
+    bar.appendChild(chip);
+  });
+  const editBtn = document.createElement('button');
+  editBtn.className = 'mode-edit-btn';
+  editBtn.textContent = '編集';
+  editBtn.addEventListener('click', openModeModal);
+  bar.appendChild(editBtn);
+}
+
+function openModeModal(){
+  renderModeList();
+  document.getElementById('mode-routine-picker').style.display='none';
+  document.getElementById('mode-modal').style.display='flex';
+}
+
+function renderModeList(){
+  const list = document.getElementById('mode-list');
+  list.innerHTML = '';
+  modes.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'mode-list-item';
+    const cnt = m.routineIds===null ? routines.length : (m.routineIds||[]).filter(id=>routines.find(r=>r.id===id)).length;
+    row.innerHTML = `
+      <div class="mode-color-dot" style="background:${m.color}"></div>
+      <div class="mode-item-name">${m.name}</div>
+      <div class="mode-item-count">${cnt}件</div>
+      <button class="mode-del-btn" data-mid="${m.id}" ${m.id===1?'style="opacity:.3;pointer-events:none"':''}>✕</button>
+    `;
+    row.querySelector('.mode-item-name').style.cursor = 'pointer';
+    row.querySelector('.mode-item-name').addEventListener('click', () => openModeRoutinePicker(m.id));
+    const del = row.querySelector('.mode-del-btn');
+    if(del && m.id!==1) del.addEventListener('click', () => {
+      modes = modes.filter(x=>x.id!==m.id);
+      if(activeModeId===m.id) activeModeId=1;
+      renderModeList(); renderModeBar(); renderToday();
+    });
+    list.appendChild(row);
+  });
+}
+
+function openModeRoutinePicker(mid){
+  editingModeId = mid;
+  const m = modes.find(x=>x.id===mid);
+  document.getElementById('mrp-title').textContent = `「${m.name}」に含めるルーティーン`;
+  const mrpList = document.getElementById('mrp-list');
+  mrpList.innerHTML = '';
+  routines.forEach(r => {
+    const on = m.routineIds===null || (m.routineIds||[]).includes(r.id);
+    const item = document.createElement('div');
+    item.className = 'mrp-item';
+    item.innerHTML = `
+      <div class="mrp-chk${on?' on':''}" data-rid="${r.id}">${on?'✓':''}</div>
+      <span class="mrp-emoji">${r.emoji}</span>
+      <span class="mrp-name">${r.name}</span>
+    `;
+    item.addEventListener('click', () => {
+      const chk = item.querySelector('.mrp-chk');
+      const isOn = chk.classList.contains('on');
+      chk.classList.toggle('on', !isOn);
+      chk.textContent = !isOn ? '✓' : '';
+    });
+    mrpList.appendChild(item);
+  });
+  document.getElementById('mode-routine-picker').style.display='block';
+}
+
+document.getElementById('mrp-save').addEventListener('click', () => {
+  const m = modes.find(x=>x.id===editingModeId);
+  if(!m) return;
+  const ids = [];
+  document.querySelectorAll('.mrp-chk.on').forEach(el => ids.push(parseInt(el.dataset.rid)));
+  m.routineIds = ids;
+  document.getElementById('mode-routine-picker').style.display='none';
+  saveAll(); renderModeList(); renderModeBar(); renderToday();
+});
+
+document.getElementById('mode-add-btn').addEventListener('click', () => {
+  const name = document.getElementById('mode-name-inp').value.trim();
+  if(!name) { document.getElementById('mode-name-inp').focus(); return; }
+  const color = MODE_COLORS[modes.length % MODE_COLORS.length];
+  const newMode = {id:nextModeId++, name, color, routineIds:routines.map(r=>r.id)};
+  modes.push(newMode);
+  document.getElementById('mode-name-inp').value='';
+  editingModeId = newMode.id;
+  renderModeList();
+  openModeRoutinePicker(newMode.id);
+  renderModeBar();
+});
+
+document.getElementById('mode-modal').addEventListener('click', e => {
+  if(e.target===document.getElementById('mode-modal')) document.getElementById('mode-modal').style.display='none';
+});
+
+// Override isActiveToday usage in renderToday with mode-aware version
+
+
+// ============ NOTIFICATIONS ============
+const SW_SRC = `
+self.addEventListener('message', e => {
+  if(e.data && e.data.type === 'SCHEDULE'){
+    const {id, title, body, ts} = e.data;
+    const delay = ts - Date.now();
+    if(delay < 0) return;
+    setTimeout(() => {
+      self.registration.showNotification(title, {
+        body,
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%234CAF50"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="36">💚</text></svg>',
+        badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%234CAF50"/></svg>',
+        tag: 'routine-' + id,
+        renotify: true
+      });
+    }, delay);
+  }
+});
+self.addEventListener('notificationclick', e => { e.notification.close(); });
+`;
+
+let swReg = null;
+
+async function initSW(){
+  if(!('serviceWorker' in navigator)) return;
+  try{
+    // Blob URL で SW 登録（単一HTMLファイルのため）
+    const blob = new Blob([SW_SRC], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    swReg = await navigator.serviceWorker.register(swUrl, {scope: './'});
+    console.log('SW registered');
+  }catch(e){ console.warn('SW registration failed:', e); }
+}
+
+async function requestNotifPermission(){
+  if(!('Notification' in window)) return 'unsupported';
+  if(Notification.permission === 'granted') return 'granted';
+  if(Notification.permission === 'denied') return 'denied';
+  const result = await Notification.requestPermission();
+  return result;
+}
+
+function scheduleNotifications(){
+  if(!swReg || !swReg.active) return;
+  if(Notification.permission !== 'granted') return;
+  const now = new Date();
+  routines.forEach(r => {
+    if(!r.notif || !r.ntime) return;
+    if(!isActiveInMode(r)) return;
+    if(r.done) return;
+    const [hh, mm] = r.ntime.split(':').map(Number);
+    const ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0).getTime();
+    if(ts <= Date.now()) return; // 過去はスキップ
+    swReg.active.postMessage({
+      type: 'SCHEDULE',
+      id: r.id,
+      title: `${r.emoji} ${r.name}`,
+      body: `今日の${r.time}のルーティーンです！`,
+      ts
+    });
+  });
+}
+
+// 通知許可ボタン
+async function handleNotifRequest(){
+  const perm = await requestNotifPermission();
+  updateNotifBanner(perm);
+  if(perm === 'granted') scheduleNotifications();
+}
+
+function updateNotifBanner(perm){
+  const banner = document.getElementById('notif-banner');
+  if(!banner) return;
+  if(perm === 'granted'){
+    banner.style.display = 'none';
+  } else if(perm === 'denied'){
+    banner.innerHTML = `<span style="font-size:12px;color:#9E9E9E;">通知がブロックされています。ブラウザの設定から許可してください。</span>`;
+    banner.style.background = '#FFF3F3';
+    banner.style.borderColor = '#FFCDD2';
+  }
+}
+// ============ END NOTIFICATIONS ============
+
+// ---- BOOT ----
+try { loadAll(); } catch(e) { console.error('loadAll error:', e); }
+// 通知許可済みなら SW 起動 & スケジュール
+try {
+  if(Notification.permission === 'granted'){
+    initSW().then(() => { setTimeout(scheduleNotifications, 500); });
+    document.getElementById('notif-banner').style.display='none';
+  } else if(Notification.permission === 'denied'){
+    updateNotifBanner('denied');
+  }
+} catch(e) { console.error('notification error:', e); }
+try { renderModeBar(); } catch(e) { console.error('renderModeBar error:', e); }
+try { renderTodos(); } catch(e) { console.error('renderTodos error:', e); }
+try { renderToday(); } catch(e) { console.error('renderToday error:', e); }
+
+</script>
+
+<!-- MODE MODAL -->
+<div class="mode-modal-bg" id="mode-modal" style="display:none">
+  <div class="mode-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">ルーティーンモード</div>
+    <p style="font-size:13px;color:#9E9E9E;margin-bottom:14px;">状況に合わせてモードを切り替えると、対象ルーティーンだけ表示されます。</p>
+    <div id="mode-list"></div>
+    <div class="mode-add-row">
+      <input id="mode-name-inp" placeholder="新しいモード名（例：週末）"/>
+      <button id="mode-add-btn">作成</button>
+    </div>
+    <div class="mode-routine-picker" id="mode-routine-picker" style="display:none">
+      <div class="mode-routine-picker-title" id="mrp-title">含めるルーティーンを選択</div>
+      <div id="mrp-list"></div>
+      <button style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:#4CAF50;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;" id="mrp-save">保存する 💚</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
