@@ -996,34 +996,7 @@ function drawCal(){
 document.getElementById('cal-p').addEventListener('click',()=>{calM--;if(calM<0){calM=11;calY--;}drawCal();});
 document.getElementById('cal-n').addEventListener('click',()=>{calM++;if(calM>11){calM=0;calY++;}drawCal();});
 
-// 表示期間設定
-document.getElementById('display-range-btn').addEventListener('click',()=>{
-  document.getElementById('display-start').value = displayRange.startDate || '';
-  document.getElementById('display-end').value = displayRange.endDate || '';
-  document.getElementById('display-modal').style.display='flex';
-});
-document.getElementById('display-save').addEventListener('click',()=>{
-  displayRange.startDate = document.getElementById('display-start').value || null;
-  displayRange.endDate = document.getElementById('display-end').value || null;
-  saveDisplayRange();
-  document.getElementById('display-modal').style.display='none';
-  // カレンダーを再描画してバッジ更新
-  updateDisplayBadge();
-  drawCal();
-});
-document.getElementById('display-clear').addEventListener('click',()=>{
-  displayRange = {startDate:null, endDate:null};
-  saveDisplayRange();
-  document.getElementById('display-start').value='';
-  document.getElementById('display-end').value='';
-  document.getElementById('display-modal').style.display='none';
-  updateDisplayBadge();
-  drawCal();
-});
-document.getElementById('display-modal').addEventListener('click',e=>{
-  if(e.target===document.getElementById('display-modal'))
-    document.getElementById('display-modal').style.display='none';
-});
+
 function updateDisplayBadge(){
   const active = displayRange.startDate || displayRange.endDate;
   const lbl = document.getElementById('display-range-lbl');
