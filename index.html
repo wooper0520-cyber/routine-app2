@@ -599,17 +599,19 @@ const todayKey = new Date().toISOString().split('T')[0];
 
 function saveAll(){
   try{
+    // 常に現在の日付を使う（日付またぎ対応）
+    const currentKey = new Date().toISOString().split('T')[0];
     localStorage.setItem(LS_ROUTINES,  JSON.stringify(routines));
     localStorage.setItem(LS_TODOS,     JSON.stringify(todos));
     localStorage.setItem(LS_MODES,     JSON.stringify(modes));
     localStorage.setItem(LS_ACTIVE_M,  String(activeModeId));
-    localStorage.setItem(LS_DONE_DATE, todayKey);
+    localStorage.setItem(LS_DONE_DATE, currentKey);
     localStorage.setItem(LS_NEXT_IDS,  JSON.stringify({r:nextId, t:nextTodoId, m:nextModeId}));
     // 今日のdone状態をhistoryに保存
     const hist = JSON.parse(localStorage.getItem('mr_history_v1')||'{}');
     const doneMap = {};
     routines.forEach(r=>{ if(r.done) doneMap[r.id]=true; });
-    hist[todayKey] = doneMap;
+    hist[currentKey] = doneMap;
     localStorage.setItem('mr_history_v1', JSON.stringify(hist));
   }catch(e){ console.warn('localStorage save error', e); }
 }
@@ -1763,10 +1765,19 @@ function checkDateReset(){
   const saved = localStorage.getItem(LS_DONE_DATE);
   const current = new Date().toISOString().split('T')[0];
   if(saved && saved !== current){
-    // 日付が変わった → doneをリセットしてlocalStorageを更新
+    // 日付が変わった → まずhistoryに昨日のdoneを保存
     const rv = localStorage.getItem(LS_ROUTINES);
     if(rv){
       const rs = JSON.parse(rv);
+      // 昨日のdone状態をhistoryに保存
+      const hist = JSON.parse(localStorage.getItem('mr_history_v1')||'{}');
+      const doneMap = {};
+      rs.forEach(r => { if(r.done) doneMap[r.id] = true; });
+      if(Object.keys(doneMap).length > 0){
+        hist[saved] = doneMap; // 昨日の日付で保存
+        localStorage.setItem('mr_history_v1', JSON.stringify(hist));
+      }
+      // doneをリセット
       rs.forEach(r => { r.done = false; });
       localStorage.setItem(LS_ROUTINES, JSON.stringify(rs));
     }
