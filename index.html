@@ -540,7 +540,7 @@ const today=new Date();
 function isActiveToday(r){
   // 期間チェック
   if(r.startDate || r.endDate){
-    const td = todayKey;
+    const td = getTodayKey();
     if(r.startDate && td < r.startDate) return false;
     if(r.endDate && td > r.endDate) return false;
   }
@@ -595,7 +595,8 @@ const LS_NEXT_IDS  = 'mr_next_ids_v1';
 const LS_DAY_TODOS = 'mr_day_todos_v1'; // 日付別Todo
 
 
-const todayKey = new Date().toISOString().split('T')[0];
+function getTodayKey(){ return new Date().toISOString().split('T')[0]; }
+const todayKey = getTodayKey(); // 後方互換用（saveAll等はcurrentKey使用）
 
 function saveAll(){
   try{
@@ -1763,7 +1764,7 @@ function updateNotifBanner(perm){
 // 日付が変わっていたらdoneをリセット（ページを長時間開いたままの場合対策）
 function checkDateReset(){
   const saved = localStorage.getItem(LS_DONE_DATE);
-  const current = new Date().toISOString().split('T')[0];
+  const current = getTodayKey();
   if(saved && saved !== current){
     // 日付が変わった → まずhistoryに昨日のdoneを保存
     const rv = localStorage.getItem(LS_ROUTINES);
@@ -1799,7 +1800,7 @@ renderToday();
 
 // 日付変更を監視（1分ごとにチェック）
 setInterval(()=>{
-  const current = new Date().toISOString().split('T')[0];
+  const current = getTodayKey();
   if(current !== todayKey){
     // 日付が変わった → ページをリロード
     location.reload();
