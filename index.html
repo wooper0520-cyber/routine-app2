@@ -1758,6 +1758,23 @@ function updateNotifBanner(perm){
 // ============ END NOTIFICATIONS ============
 
 // ---- BOOT ----
+// 日付が変わっていたらdoneをリセット（ページを長時間開いたままの場合対策）
+function checkDateReset(){
+  const saved = localStorage.getItem(LS_DONE_DATE);
+  const current = new Date().toISOString().split('T')[0];
+  if(saved && saved !== current){
+    // 日付が変わった → doneをリセットしてlocalStorageを更新
+    const rv = localStorage.getItem(LS_ROUTINES);
+    if(rv){
+      const rs = JSON.parse(rv);
+      rs.forEach(r => { r.done = false; });
+      localStorage.setItem(LS_ROUTINES, JSON.stringify(rs));
+    }
+    localStorage.setItem(LS_TODOS, '[]');
+    localStorage.setItem(LS_DONE_DATE, current);
+  }
+}
+checkDateReset();
 loadAll();
 if(Notification.permission === 'granted'){
   initSW().then(() => { setTimeout(scheduleNotifications, 500); });
@@ -1768,6 +1785,15 @@ if(Notification.permission === 'granted'){
 renderModeBar();
 renderTodos();
 renderToday();
+
+// 日付変更を監視（1分ごとにチェック）
+setInterval(()=>{
+  const current = new Date().toISOString().split('T')[0];
+  if(current !== todayKey){
+    // 日付が変わった → ページをリロード
+    location.reload();
+  }
+}, 60000);
 
 </script>
 </body>
