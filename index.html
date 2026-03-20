@@ -625,16 +625,16 @@ function loadAll(){
       const loaded = JSON.parse(rv);
       // done フラグは日付が変わったらリセット
       const savedDate = localStorage.getItem(LS_DONE_DATE);
+      const currentDate = getTodayKey();
       loaded.forEach(r => {
-        if(savedDate !== todayKey) r.done = false;
-        // color を COLORS 参照に戻す（JSONはオブジェクトそのまま保存されている）
+        if(savedDate !== currentDate) r.done = false;
       });
       routines = loaded;
     }
     // Todo（当日分のみ復元。日付変わったら空に）
     const tv = localStorage.getItem(LS_TODOS);
     const savedDate2 = localStorage.getItem(LS_DONE_DATE);
-    if(tv && savedDate2 === todayKey) todos = JSON.parse(tv);
+    if(tv && savedDate2 === getTodayKey()) todos = JSON.parse(tv);
     else todos = [];
     // モード
     const mv = localStorage.getItem(LS_MODES);
