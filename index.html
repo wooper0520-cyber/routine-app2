@@ -327,7 +327,21 @@ body{font-family:'Noto Sans JP',sans-serif;background:#F8F9FA;min-height:100vh;}
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F0F0F0;">
       <div style="font-size:15px;font-weight:700;color:#212121;margin-bottom:8px;">🔄 今日のリセット</div>
       <p style="font-size:12px;color:#9E9E9E;margin-bottom:12px;">今日のチェック状態を全てリセットします</p>
-      <button id="reset-today-btn"
+      <button id="reset-today-btn" onclick="(function(){
+        if(!confirm('今日のチェックを全てリセットしますか？')) return;
+        var today = new Date().toISOString().split('T')[0];
+        var rs = JSON.parse(localStorage.getItem('mr_routines_v1')||'[]');
+        var savedDate = localStorage.getItem('mr_done_date_v1');
+        var hist = JSON.parse(localStorage.getItem('mr_history_v1')||'{}');
+        var doneMap = {};
+        rs.forEach(function(r){ if(r.done) doneMap[r.id]=true; });
+        if(Object.keys(doneMap).length>0 && savedDate){ hist[savedDate]=doneMap; localStorage.setItem('mr_history_v1',JSON.stringify(hist)); }
+        rs.forEach(function(r){ r.done=false; });
+        localStorage.setItem('mr_routines_v1',JSON.stringify(rs));
+        localStorage.setItem('mr_done_date_v1',today);
+        localStorage.setItem('mr_todos_v1','[]');
+        location.reload();
+      })()"
         style="width:100%;padding:13px;border-radius:14px;background:#FFF3E0;color:#E65100;border:1.5px solid #FFCC80;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">
         🔄 今日のチェックをリセット
       </button>
@@ -1833,13 +1847,18 @@ renderModeBar();
 renderTodos();
 renderToday();
 
-// 日付変更を監視（1分ごとにチェック）
-setInterval(()=>{
-  const current = getTodayKey();
-  if(current !== todayKey){
-    // 日付が変わった → ページをリロード
-    location.reload();
+// 日付変更を監視（画面を開いた瞬間にチェック）
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible'){
+    const current = getTodayKey();
+    if(current !== todayKey){
+      location.reload();
+    }
   }
+});
+// 念のため1分ごとにもチェック
+setInterval(()=>{
+  if(getTodayKey() !== todayKey) location.reload();
 }, 60000);
 
 </script>
