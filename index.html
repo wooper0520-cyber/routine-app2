@@ -1146,14 +1146,42 @@ function showDayDetail(y,m,d){
       const isDone = !!done[r.id];
       const row = document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #F5F5F5;';
+      const checkStyle = isDone
+        ? 'background:#4CAF50;border:2px solid #4CAF50;'
+        : 'background:#fff;border:2px solid #E0E0E0;';
       row.innerHTML=`
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:500;color:${isDone?'#BDBDBD':'#212121'};${isDone?'text-decoration:line-through;':''}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.emoji} ${r.name}</div>
           <div style="font-size:10px;color:#BDBDBD;">${r.time}${r.duration?' · '+r.duration+'分':''}</div>
         </div>
-        ${isFuture ? '<div style="font-size:10px;color:#BDBDBD;white-space:nowrap;">予定</div>' :
-          `<div style="width:22px;height:22px;border-radius:50%;flex-shrink:0;${isDone?'background:#4CAF50;border:2px solid #4CAF50;':'background:#fff;border:2px solid #E0E0E0;'}display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">${isDone?'✓':''}</div>`
+        ${isFuture
+          ? '<div style="font-size:10px;color:#BDBDBD;white-space:nowrap;">予定</div>'
+          : `<div class="day-check-btn" data-rid="${r.id}" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;cursor:pointer;${checkStyle}display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">${isDone?'✓':''}</div>`
         }`;
+      // 過去・今日のチェックボタンにイベント追加
+      if(!isFuture){
+        const btn = row.querySelector('.day-check-btn');
+        if(btn) btn.addEventListener('click', ()=>{
+          const dateStr = dateKey(y,m,d);
+          const hist = JSON.parse(localStorage.getItem('mr_history_v1')||'{}');
+          const dayDone = hist[dateStr] || {};
+          const rid = parseInt(btn.dataset.rid);
+          if(dayDone[rid]){
+            delete dayDone[rid];
+          } else {
+            dayDone[rid] = true;
+          }
+          hist[dateStr] = dayDone;
+          localStorage.setItem('mr_history_v1', JSON.stringify(hist));
+          // 今日の場合はroutinesも更新
+          if(isToday){
+            const rt = routines.find(x=>x.id===rid);
+            if(rt){ rt.done = !rt.done; saveAll(); renderToday(); }
+          }
+          // モーダルを再描画
+          showDayDetail(y,m,d);
+        });
+      }
       list.appendChild(row);
     });
   }
@@ -1851,15 +1879,15 @@ renderToday();
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState === 'visible'){
     const current = getTodayKey();
-    if(current !== todayKey){
+    // todayKeyはページ読み込み時の日付。currentが違う日なら日付が変わった
+    const savedDate = localStorage.getItem('mr_done_date_v1');
+    if(savedDate && savedDate !== current){
+      // 日付が変わった → リセットしてリロード
+      checkDateReset();
       location.reload();
     }
   }
 });
-// 念のため1分ごとにもチェック
-setInterval(()=>{
-  if(getTodayKey() !== todayKey) location.reload();
-}, 60000);
 
 </script>
 </body>
